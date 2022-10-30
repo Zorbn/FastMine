@@ -37,6 +37,8 @@ class Input {
                 document.addEventListener("mousemove", onMouseMove);
             } else {
                 document.removeEventListener("mousemove", onMouseMove);
+                this.pressedKeys.clear();
+                this.pressedMouseButtons.clear();
             }
         });
 

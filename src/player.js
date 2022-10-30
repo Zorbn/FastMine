@@ -141,12 +141,9 @@ class Player {
         }
     }
 
-    update = (deltaTime, world, camera, input) => {
-        this.interact(deltaTime, world, input);
-
-        if (input.wasKeyPressed("KeyF")) {
-            this.isFlying = !this.isFlying;
-        }
+    move = (deltaTime, world, camera, input) => {
+        let isCrouching = input.isKeyPressed("ShiftLeft");
+        let grounded = isOnGround(world, this.x, this.y, this.z, this.size, this.size, this.size);
 
         let moveForward = 0;
         let moveRight = 0;
@@ -173,11 +170,11 @@ class Player {
                 moveUp += 1;
             }
 
-            if (input.isKeyPressed("ShiftLeft")) {
+            if (isCrouching) {
                 moveUp -= 1;
             }
         } else {
-            if (input.isKeyPressed("Space") && isOnGround(world, this.x, this.y, this.z, this.size, this.size, this.size)) {
+            if (input.isKeyPressed("Space") && grounded) {
                 this.yVelocity = gravity * 20;
             }
         }
@@ -201,12 +198,16 @@ class Player {
 
         if (isCollidingWithBlock(world, newX, newY, newZ, this.size, this.size, this.size)) {
             newX = this.x;
+        } else if (isCrouching && grounded && !isOnGround(world, newX, newY, newZ, this.size, this.size, this.size)) {
+            newX = this.x;
         }
 
         newZ += moveForward * this.forwardZ * this.speed;
         newZ += moveRight * this.rightZ * this.speed;
 
         if (isCollidingWithBlock(world, newX, newY, newZ, this.size, this.size, this.size)) {
+            newZ = this.z;
+        } else if (isCrouching && grounded && !isOnGround(world, newX, newY, newZ, this.size, this.size, this.size)) {
             newZ = this.z;
         }
 
@@ -231,6 +232,16 @@ class Player {
         camera.position.y = this.y;
         camera.position.z = this.z;
         camera.quaternion.setFromEuler(this.angle);
+    }
+
+    update = (deltaTime, world, camera, input) => {
+        this.interact(deltaTime, world, input);
+
+        if (input.wasKeyPressed("KeyF")) {
+            this.isFlying = !this.isFlying;
+        }
+
+        this.move(deltaTime, world, camera, input);
     }
 
     onMouseMove = (event, camera) => {
