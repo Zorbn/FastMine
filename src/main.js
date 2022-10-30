@@ -1,7 +1,6 @@
 /*
  * TODO:
  * Improve state handling, ie: player object, flight mode,
- * Fix delta time getting too large.
  *
  * FEAT:
  * Spelunky-like cave generation,
@@ -133,6 +132,7 @@ const draw = (time) => {
     const deltaTime = (time - lastTime) * 0.001;
     lastTime = time;
 
+    if (!document.hasFocus() && totalTime != 0) return;
     if (isNaN(deltaTime)) return;
     totalTime += deltaTime;
 

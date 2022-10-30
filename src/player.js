@@ -90,6 +90,8 @@ class Player {
 
     interact = (deltaTime, world, input) => {
         this.breakingMesh.visible = false;
+        let lastBreakingProgress = this.breakingProgress;
+        this.breakingProgress = 0;
 
         if (input.isMouseButtonPressed(0)) {
             let rayHit = raycast(world, this.x, this.y, this.z, this.lookX, this.lookY, this.lookZ, reach);
@@ -102,12 +104,12 @@ class Player {
                     this.breakingBlockY = rayHit.y;
                     this.breakingBlockZ = rayHit.z;
                     this.blockIdBeingBroken = world.getBlock(rayHit.x, rayHit.y, rayHit.z);
-                    this.breakingProgress = 0;
+                    lastBreakingProgress = 0;
                 }
 
                 const blockBeingBroken = blocksById.get(this.blockIdBeingBroken);
 
-                this.breakingProgress += deltaTime;
+                this.breakingProgress = lastBreakingProgress + deltaTime;
 
                 // Negative breakTime signals an unbreakable block.
                 const unbreakable = blockBeingBroken.breakTime < 0;
