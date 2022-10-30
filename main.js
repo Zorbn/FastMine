@@ -17,12 +17,13 @@ const camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerH
 const renderer = new THREE.WebGLRenderer();
 
 const blockTexSize = 16;
-const blockCount = 4;
+const blockCount = 8;
 const blockTexSpan = blockTexSize * blockCount;
 const breakingTexSize = 16;
 const breakingTexCount = 4;
 const breakingTexSpan = breakingTexSize * breakingTexCount;
 const texComponents = 4; // RGBA
+const barrierId = 4;
 
 const vs = `
 attribute vec3 uv3;
@@ -371,7 +372,7 @@ class Chunk {
             if (worldX == 0 || worldX == mapSize - 1 ||
                 worldY == 0 || worldY == mapSize - 1 ||
                 worldZ == 0 || worldZ == mapSize - 1) {
-                this.setBlock(x, y, z, 2);
+                this.setBlock(x, y, z, barrierId);
                 continue;
             }
 
@@ -627,7 +628,7 @@ const update = (deltaTime) => {
     if (pressedMouseButtons.has(0)) {
         let rayHit = raycast(camera.position.x, camera.position.y, camera.position.z, lookX, lookY, lookZ, 10);
 
-        if (rayHit.hit) {
+        if (rayHit.hit && rayHit.block != barrierId) {
             breakingMaterial.uniforms.depth.value = breakingProgress / breakTime * breakingTexCount;
             breakingMesh.visible = true;
             breakingMesh.position.x = rayHit.x + 0.5;
@@ -648,6 +649,8 @@ const update = (deltaTime) => {
                 breakingBlockZ = rayHit.z;
                 breakingProgress = 0;
             }
+        } else {
+            breakingProgress = 0;
         }
     } else {
         breakingProgress = 0;
