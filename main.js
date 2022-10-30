@@ -1,19 +1,15 @@
 /*
  * TODO:
  * Refactor this to not be one file,
- * Consider using Vectors instead of x, y, z,
- * Shade each face of the blocks,
  * Better input handling for single clicks,
  * Improve state handling, ie: player object, flight mode,
  *
  * FEAT:
  * Spelunky-like cave generation,
  * Ores,
- * Mining delay,
  * Sound,
  * Multiple levels w/ transition between,
  * Hazards,
- * FOG: scene.fog = new THREE.Fog(color, near, far);
  */
 
 const scene = new THREE.Scene();
@@ -23,6 +19,9 @@ const renderer = new THREE.WebGLRenderer();
 const blockTexSize = 16;
 const blockCount = 4;
 const blockTexSpan = blockTexSize * blockCount;
+const breakingTexSize = 16;
+const breakingTexCount = 4;
+const breakingTexSpan = breakingTexSize * breakingTexCount;
 const texComponents = 4; // RGBA
 
 const vs = `
@@ -50,6 +49,35 @@ out vec4 outColor;
 
 void main() {
     outColor = texture(diffuse, vertUv) * vec4(vertColor, 1.0);
+}
+`;
+
+const breakingVs = `
+out vec2 vertUv;
+
+void main() {
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    vertUv = uv;
+}
+`;
+
+const breakingFs = `
+precision highp float;
+precision highp int;
+precision highp sampler2DArray;
+
+uniform sampler2DArray diffuse;
+uniform int depth;
+in vec2 vertUv;
+
+out vec4 outColor;
+
+void main() {
+    outColor = texture(diffuse, vec3(vertUv, depth));
+
+    if (outColor.a < 0.1) {
+        discard;
+    }
 }
 `;
 
@@ -401,30 +429,29 @@ const getBlock = (x, y, z) => {
     return chunk.getBlock(localX, localY, localZ);
 }
 
-const loadTexArray = image => {
+const loadTexArray = (image, depth, size, span) => {
+    ctx2D.clearRect(0, 0, canvas.width, canvas.height);
     ctx2D.drawImage(image, 0, 0);
-    const tex = ctx2D.getImageData(0, 0, blockTexSpan, blockTexSize);
+    const tex = ctx2D.getImageData(0, 0, span, size);
 
-    const texData = new Uint8Array(texComponents * blockTexSpan * blockTexSize);
+    const texData = new Uint8Array(texComponents * span * size);
 
     // The loaded texture is layed out in rows of the full texture.
     // Convert it to be stored in rows of each individual textured.
     let i = 0;
-    for (let z = 0; z < blockCount; z++) {
-        for (let y = 0; y < blockTexSize; y++) {
-            for (let x = 0; x < blockTexSize; x++) {
-                const pixelI = ((x + z * blockTexSize) + y * blockTexSpan) * texComponents;
-                texData[i] = tex.data[pixelI];
-                texData[i + 1] = tex.data[pixelI + 1];
-                texData[i + 2] = tex.data[pixelI + 2];
-                texData[i + 3] = tex.data[pixelI + 3];
+    for (let z = 0; z < depth; z++)
+    for (let y = 0; y < size; y++)
+    for (let x = 0; x < size; x++) {
+        const pixelI = ((x + z * size) + y * span) * texComponents;
+        texData[i] = tex.data[pixelI];
+        texData[i + 1] = tex.data[pixelI + 1];
+        texData[i + 2] = tex.data[pixelI + 2];
+        texData[i + 3] = tex.data[pixelI + 3];
 
-                i += texComponents;
-            }
-        }
+        i += texComponents;
     }
 
-    const texture = new THREE.DataArrayTexture(texData, blockTexSize, blockTexSize, blockCount);
+    const texture = new THREE.DataArrayTexture(texData, size, size, depth);
     texture.needsUpdate = true;
 
     return texture;
@@ -432,6 +459,7 @@ const loadTexArray = image => {
 
 let totalTime = 0;
 let pressedKeys = new Set();
+let pressedMouseButtons = new Set();
 let cameraAngle = new THREE.Euler(0, 0, 0, "YXZ");
 
 let forwardX = 0;
@@ -449,9 +477,19 @@ let playerSize = 0.8;
 let isPlayerFlying = false;
 let playerYVelocity = 0;
 
+let breakingBlockX = 0;
+let breakingBlockY = 0;
+let breakingBlockZ = 0;
+let breakingProgress = 0;
+let breakingMesh;
+let breakingMaterial;
+const breakingMeshSize = 1;
+const breakingMeshPaddedSize = breakingMeshSize + 0.01;
+const breakTime = 0.5;
+
 const gravity = 0.5;
 const mouseSensitivity = 0.002;
-const maxLookAngle = Math.PI * 0.5 * 0.95;
+const maxLookAngle = Math.PI * 0.5 * 0.99;
 
 const mouseMove = (event) => {
     cameraAngle.x -= event.movementY * mouseSensitivity;
@@ -585,6 +623,36 @@ const raycast = (startX, startY, startZ, dirX, dirY, dirZ, range) => {
 }
 
 const update = (deltaTime) => {
+    breakingMesh.visible = false;
+    if (pressedMouseButtons.has(0)) {
+        let rayHit = raycast(camera.position.x, camera.position.y, camera.position.z, lookX, lookY, lookZ, 10);
+
+        if (rayHit.hit) {
+            breakingMaterial.uniforms.depth.value = breakingProgress / breakTime * breakingTexCount;
+            breakingMesh.visible = true;
+            breakingMesh.position.x = rayHit.x + 0.5;
+            breakingMesh.position.y = rayHit.y + 0.5;
+            breakingMesh.position.z = rayHit.z + 0.5;
+
+            if (rayHit.x == breakingBlockX && rayHit.y == breakingBlockY &&
+                rayHit.z == breakingBlockZ) {
+                breakingProgress += deltaTime;
+
+                if (breakingProgress >= breakTime) {
+                    setBlock(rayHit.x, rayHit.y, rayHit.z, -1);
+                    breakingProgress = 0;
+                }
+            } else {
+                breakingBlockX = rayHit.x;
+                breakingBlockY = rayHit.y;
+                breakingBlockZ = rayHit.z;
+                breakingProgress = 0;
+            }
+        }
+    } else {
+        breakingProgress = 0;
+    }
+
     let moveForward = 0;
     let moveRight = 0;
     let moveUp = 0;
@@ -686,19 +754,14 @@ const draw = (time) => {
 }
 
 const setup = async () => {
-    scene.background = new THREE.Color(0x492514);
+    const bgColor = 0x492514;
+    scene.background = new THREE.Color(bgColor);
 
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
 
     document.addEventListener("click", () => {
         document.body.requestPointerLock();
-
-        let rayHit = raycast(camera.position.x, camera.position.y, camera.position.z, lookX, lookY, lookZ, 10);
-
-        if (rayHit.hit) {
-            setBlock(rayHit.x, rayHit.y, rayHit.z, -1);
-        }
     });
     document.addEventListener("pointerlockchange", () => {
         if (document.pointerLockElement == document.body) {
@@ -719,20 +782,24 @@ const setup = async () => {
         pressedKeys.delete(event.code);
     })
 
+    document.addEventListener("mousedown", (event) => {
+        pressedMouseButtons.add(event.button);
+    })
+    document.addEventListener("mouseup", (event) => {
+        pressedMouseButtons.delete(event.button);
+    })
+
     window.addEventListener("resize", () => {
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
         renderer.setSize(window.innerWidth, window.innerHeight);
     });
 
-    camera.position.x = 9.5;
-    camera.position.y = 20;
-    camera.position.z = 9.5;
-
     const imageLoader = new THREE.ImageLoader();
     const image = await imageLoader.loadAsync("blocks.png");
+    const breakingImage = await imageLoader.loadAsync("breaking.png");
 
-    const texture = loadTexArray(image);
+    const texture = loadTexArray(image, blockCount, blockTexSize, blockTexSpan);
 
     material = new THREE.ShaderMaterial({
         uniforms: {
@@ -744,6 +811,27 @@ const setup = async () => {
         glslVersion: THREE.GLSL3,
     });
 
+    const breakingTexture = loadTexArray(breakingImage, breakingTexCount, breakingTexSize, breakingTexSpan);
+
+    breakingMaterial = new THREE.ShaderMaterial({
+        uniforms: {
+            diffuse: { value: breakingTexture },
+            depth: { value: 2 },
+        },
+        vertexShader: breakingVs,
+        fragmentShader: breakingFs,
+        glslVersion: THREE.GLSL3,
+    });
+
+    breakingMesh = new THREE.Mesh(
+        new THREE.BoxGeometry(
+            breakingMeshPaddedSize,
+            breakingMeshPaddedSize,
+            breakingMeshPaddedSize
+        ), breakingMaterial);
+
+    scene.add(breakingMesh);
+
     noise.seed(Math.random());
 
     for (let x = 0; x < mapSizeInChunks; x++)
@@ -752,6 +840,40 @@ const setup = async () => {
         let newChunk = new Chunk(chunkSize, x, y, z);
         newChunk.generate();
         setChunk(x, y, z, newChunk);
+    }
+
+    const spawnChunkX = mapSizeInChunks - 1;
+    const spawnChunkY = mapSizeInChunks - 1;
+    const spawnChunkZ = mapSizeInChunks - 1;
+
+    const spawnChunkWorldX = spawnChunkX * chunkSize;
+    const spawnChunkWorldY = spawnChunkY * chunkSize;
+    const spawnChunkWorldZ = spawnChunkZ * chunkSize;
+
+    const spawnChunk = getChunk(spawnChunkX, spawnChunkY, spawnChunkZ);
+
+    let foundSpawnPos = false;
+
+    for (let x = 0; x < chunkSize; x++)
+    for (let y = 0; y < chunkSize; y++)
+    for (let z = 0; z < chunkSize; z++) {
+        if (spawnChunk.getBlock(x, y, z) != -1) continue;
+
+        camera.position.x = spawnChunkWorldX + x + 0.5;
+        camera.position.y = spawnChunkWorldY + y + 0.5;
+        camera.position.z = spawnChunkWorldZ + z + 0.5;
+        foundSpawnPos = true;
+        break;
+    }
+
+    if (!foundSpawnPos) {
+        let x = Math.floor(chunkSize * 0.5);
+        let y = Math.floor(chunkSize * 0.5);
+        let z = Math.floor(chunkSize * 0.5);
+        spawnChunk.setBlock(x, y, z, -1);
+        camera.position.x = spawnChunkWorldX + x + 0.5;
+        camera.position.y = spawnChunkWorldY + y + 0.5;
+        camera.position.z = spawnChunkWorldZ + z + 0.5;
     }
 
     draw();
