@@ -4,20 +4,20 @@
  * Consider using Vectors instead of x, y, z,
  * Shade each face of the blocks,
  * Better input handling for single clicks,
- * Improve state handling, ie: flight mode,
+ * Improve state handling, ie: player object, flight mode,
  *
  * FEAT:
- * Better textures,
  * Spelunky-like cave generation,
  * Ores,
  * Mining delay,
  * Sound,
  * Multiple levels w/ transition between,
  * Hazards,
+ * FOG: scene.fog = new THREE.Fog(color, near, far);
  */
 
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+const camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer();
 
 const blockTexSize = 16;
@@ -29,10 +29,12 @@ const vs = `
 attribute vec3 uv3;
 
 out vec3 vertUv;
+out vec3 vertColor;
 
 void main() {
     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
     vertUv = uv3;
+    vertColor = color;
 }
 `;
 
@@ -42,11 +44,12 @@ precision highp sampler2DArray;
 
 uniform sampler2DArray diffuse;
 in vec3 vertUv;
+in vec3 vertColor;
 
 out vec4 outColor;
 
 void main() {
-    outColor = texture(diffuse, vertUv);
+    outColor = texture(diffuse, vertUv) * vec4(vertColor, 1.0);
 }
 `;
 
@@ -173,52 +176,229 @@ const directionVecs = [
     [0, -1, 0],
 ];
 
+const faceColors = new Float32Array([
+    // Forward
+    0.9,
+    // Backward
+    0.6,
+    // Right
+    0.8,
+    // Left
+    0.7,
+    // Up
+    1.0,
+    // Down
+    0.5,
+]);
+
 const canvas = new OffscreenCanvas(blockTexSpan, blockTexSize);
 const ctx2D = canvas.getContext("2d");
 
-const worldSize = 16;
+const chunkSize = 16;
+const mapSizeInChunks = 4;
+const mapSize = chunkSize * mapSizeInChunks;
+const chunks = new Map();
 
-let world = [];
-
-let lastTime = 0;
-
-const getBlockIndex = (x, y, z) => {
-    return x + y * worldSize + z * worldSize * worldSize;
+const getChunk = (x, y, z) => {
+    let hash = hashVector(x, y, z);
+    return chunks.get(hash);
 }
 
-const setBlock = (x, y, z, type) => {
-    if (x < 0 || x >= worldSize || y < 0 || y >= worldSize || z < 0 || z >= worldSize) return;
-
-    world[getBlockIndex(x, y, z)] = type;
+const setChunk = (x, y, z, chunk) => {
+    let hash = hashVector(x, y, z);
+    chunks.set(hash, chunk);
 }
 
-const getBlock = (x, y, z) => {
-    if (x < 0 || x >= worldSize || y < 0 || y >= worldSize || z < 0 || z >= worldSize) return -1;
-
-    return world[getBlockIndex(x, y, z)];
+const updateChunk = (x, y, z) => {
+    let chunk = getChunk(x, y, z);
+    if (chunk == null) return;
+    chunk.needsUpdate = true;
 }
 
-const generateWorld = () => {
-    world.length = worldSize * worldSize * worldSize;
-    world.fill(-1);
+const hashVector = (x, y, z) => {
+    return x * 73856093 ^ y * 19349663 ^ z * 83492791;
+}
 
-    for (let z = 0; z < worldSize; z++) {
-        for (let y = 0; y < worldSize; y++) {
-            for (let x = 0; x < worldSize; x++) {
-                const rnd = Math.random();
+class Chunk {
+    constructor(size, x, y, z) {
+        this.chunkX = x;
+        this.chunkY = y;
+        this.chunkZ = z;
+        this.size = size;
+        this.data = new Array(size * size * size);
+        this.mesh = new THREE.Mesh(new THREE.BufferGeometry(), material);
+        this.mesh.geometry.dynamic = true;
+        this.needsUpdate = true;
+        scene.add(this.mesh);
+    }
 
-                if (rnd > 0.9) {
-                    setBlock(x, y, z, 3);
-                } else if (rnd > 0.8) {
-                    setBlock(x, y, z, 2);
-                } else if (rnd > 0.7) {
-                    setBlock(x, y, z, 1);
-                } else if (rnd > 0.6) {
-                    setBlock(x, y, z, 0);
+    getBlockIndex = (x, y, z) => {
+        return x + y * this.size + z * this.size * this.size;
+    }
+
+    setBlock = (x, y, z, type) => {
+        if (x < 0 || x >= this.size || y < 0 || y >= this.size || z < 0 || z >= this.size) return;
+
+        this.data[this.getBlockIndex(x, y, z)] = type;
+        this.needsUpdate = true;
+
+        if (x == 0)             updateChunk(this.chunkX - 1, this.chunkY, this.chunkZ);
+        if (x == chunkSize - 1) updateChunk(this.chunkX + 1, this.chunkY, this.chunkZ);
+        if (y == 0)             updateChunk(this.chunkX, this.chunkY - 1, this.chunkZ);
+        if (y == chunkSize - 1) updateChunk(this.chunkX, this.chunkY + 1, this.chunkZ);
+        if (z == 0)             updateChunk(this.chunkX, this.chunkY, this.chunkZ - 1);
+        if (z == chunkSize - 1) updateChunk(this.chunkX, this.chunkY, this.chunkZ + 1);
+    }
+
+    getBlock = (x, y, z) => {
+        if (x < 0 || x >= this.size || y < 0 || y >= this.size || z < 0 || z >= this.size) return -1;
+
+        return this.data[this.getBlockIndex(x, y, z)];
+    }
+
+    update = () => {
+        if (this.needsUpdate) {
+            this.updateMesh();
+            this.needsUpdate = false;
+        }
+    }
+
+    updateMesh = () => {
+        // this.mesh.geometry.dispose();
+
+        let vertices = [];
+        let uvs = [];
+        let indices = [];
+        let colors = [];
+
+        let vertexComponentI = 0;
+        let vertexI = 0;
+        let indexI = 0;
+
+        // Generate the mesh for the chunk's blocks.
+        for (let z = 0; z < this.size; z++)
+        for (let y = 0; y < this.size; y++)
+        for (let x = 0; x < this.size; x++) {
+            let worldX = x + this.chunkX * chunkSize;
+            let worldY = y + this.chunkY * chunkSize;
+            let worldZ = z + this.chunkZ * chunkSize;
+            const block = getBlock(worldX, worldY, worldZ);
+
+            // Don't render air.
+            if (block == -1) continue;
+
+            for (let dir = 0; dir < 6; dir++) {
+                // Only generate faces that will be visible.
+                const dirVec = directionVecs[dir];
+                if (getBlock(worldX + dirVec[0], worldY + dirVec[1], worldZ + dirVec[2]) == -1) {
+                    // Add indices before adding vertices, they refer
+                    // to the upcoming vertices.
+                    for (let ii = 0; ii < 6; ii++) {
+                        indices[indexI] = cubeIndices[dir][ii] + vertexI;
+                        indexI++;
+                    }
+
+                    for (let vi = 0; vi < 4; vi++) {
+                        // Add vertex x, y, and z for this face.
+                        vertices[vertexComponentI] = cubeVertices[dir][vi * 3] + worldX;
+                        vertices[vertexComponentI + 1] = cubeVertices[dir][vi * 3 + 1] + worldY;
+                        vertices[vertexComponentI + 2] = cubeVertices[dir][vi * 3 + 2] + worldZ;
+
+                        // Add UV x and y for this face.
+                        uvs[vertexComponentI] = cubeUvs[dir][vi * 2];
+                        uvs[vertexComponentI + 1] = cubeUvs[dir][vi * 2 + 1];
+                        // The UV's z is the index of it's texture.
+                        uvs[vertexComponentI + 2] = block;
+
+                        // Add color for this face.
+                        colors[vertexComponentI] = faceColors[dir];
+                        colors[vertexComponentI + 1] = faceColors[dir];
+                        colors[vertexComponentI + 2] = faceColors[dir];
+
+                        vertexComponentI += 3;
+                        vertexI++;
+                    }
                 }
             }
         }
+
+        this.mesh.geometry.setIndex(indices);
+        this.mesh.geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(vertices), 3));
+        this.mesh.geometry.setAttribute("uv3", new THREE.BufferAttribute(new Float32Array(uvs), 3));
+        this.mesh.geometry.setAttribute("color", new THREE.BufferAttribute(new Float32Array(colors), 3));
+        this.mesh.geometry.verticesNeedUpdate = true;
     }
+
+    generate = () => {
+        this.data.length = this.size * this.size * this.size;
+        this.data.fill(-1);
+
+        for (let z = 0; z < this.size; z++)
+        for (let y = 0; y < this.size; y++)
+        for (let x = 0; x < this.size; x++) {
+            const worldX = x + this.chunkX * this.size;
+            const worldY = y + this.chunkY * this.size;
+            const worldZ = z + this.chunkZ * this.size;
+
+            if (worldX == 0 || worldX == mapSize - 1 ||
+                worldY == 0 || worldY == mapSize - 1 ||
+                worldZ == 0 || worldZ == mapSize - 1) {
+                this.setBlock(x, y, z, 2);
+                continue;
+            }
+
+            const noiseValue = noise.simplex3(worldX * 0.1, worldY * 0.1, worldZ * 0.1);
+
+            if (noiseValue < 0.4) {
+                this.setBlock(x, y, z, 0);
+            }
+
+            // const rnd = Math.random();
+
+            // if (rnd > 0.9) {
+            //     setBlock(x, y, z, 3);
+            // } else if (rnd > 0.8) {
+            //     setBlock(x, y, z, 2);
+            // } else if (rnd > 0.7) {
+            //     setBlock(x, y, z, 1);
+            // } else if (rnd > 0.6) {
+            //     setBlock(x, y, z, 0);
+            // }
+        }
+    }
+
+    destroy = () => {
+        this.mesh.geometry.dispose();
+        this.mesh.material.dispose();
+        scene.remove(this.mesh);
+    }
+}
+
+let lastTime = 0;
+let material;
+
+const setBlock = (x, y, z, type) => {
+    let chunkX = Math.floor(x / chunkSize);
+    let chunkY = Math.floor(y / chunkSize);
+    let chunkZ = Math.floor(z / chunkSize);
+    let localX = x % chunkSize;
+    let localY = y % chunkSize;
+    let localZ = z % chunkSize;
+    let chunk = getChunk(chunkX, chunkY, chunkZ);
+    if (chunk == null) return;
+    chunk.setBlock(localX, localY, localZ, type);
+}
+
+const getBlock = (x, y, z) => {
+    let chunkX = Math.floor(x / chunkSize);
+    let chunkY = Math.floor(y / chunkSize);
+    let chunkZ = Math.floor(z / chunkSize);
+    let localX = x % chunkSize;
+    let localY = y % chunkSize;
+    let localZ = z % chunkSize;
+    let chunk = getChunk(chunkX, chunkY, chunkZ);
+    if (chunk == null) return -1;
+    return chunk.getBlock(localX, localY, localZ);
 }
 
 const loadTexArray = image => {
@@ -404,61 +584,6 @@ const raycast = (startX, startY, startZ, dirX, dirY, dirZ, range) => {
     };
 }
 
-const updateMesh = (mesh) => {
-    mesh.geometry.dispose();
-
-    let vertices = [];
-    let uvs = [];
-    let indices = [];
-
-    let vertexComponentI = 0;
-    let vertexI = 0;
-    let indexI = 0;
-
-    // Generate the mesh for the world's blocks.
-    for (let z = 0; z < worldSize; z++)
-    for (let y = 0; y < worldSize; y++)
-    for (let x = 0; x < worldSize; x++) {
-        const block = getBlock(x, y, z);
-
-        // Don't render air.
-        if (block == -1) continue;
-
-        for (let dir = 0; dir < 6; dir++) {
-            // Only generate faces that will be visible.
-            const dirVec = directionVecs[dir];
-            if (getBlock(x + dirVec[0], y + dirVec[1], z + dirVec[2]) == -1) {
-                // Add indices before adding vertices, they refer
-                // to the upcoming vertices.
-                for (let ii = 0; ii < 6; ii++) {
-                    indices[indexI] = cubeIndices[dir][ii] + vertexI;
-                    indexI++;
-                }
-
-                for (let vi = 0; vi < 4; vi++) {
-                    // Add vertex x, y, and z for this face.
-                    vertices[vertexComponentI] = cubeVertices[dir][vi * 3] + x;
-                    vertices[vertexComponentI + 1] = cubeVertices[dir][vi * 3 + 1] + y;
-                    vertices[vertexComponentI + 2] = cubeVertices[dir][vi * 3 + 2] + z;
-
-                    // Add UV x and y for this face.
-                    uvs[vertexComponentI] = cubeUvs[dir][vi * 2];
-                    uvs[vertexComponentI + 1] = cubeUvs[dir][vi * 2 + 1];
-                    // The UV's z is the index of it's texture.
-                    uvs[vertexComponentI + 2] = block;
-
-                    vertexComponentI += 3;
-                    vertexI++;
-                }
-            }
-        }
-    }
-
-    mesh.geometry.setIndex(indices);
-    mesh.geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(vertices), 3));
-    mesh.geometry.setAttribute("uv3", new THREE.BufferAttribute(new Float32Array(uvs), 3));
-}
-
 const update = (deltaTime) => {
     let moveForward = 0;
     let moveRight = 0;
@@ -540,6 +665,10 @@ const update = (deltaTime) => {
     camera.position.z = newZ;
 
     camera.quaternion.setFromEuler(cameraAngle);
+
+    for (let [_hash, chunk] of chunks) {
+        chunk.update();
+    }
 }
 
 const draw = (time) => {
@@ -557,7 +686,7 @@ const draw = (time) => {
 }
 
 const setup = async () => {
-    scene.background = new THREE.Color(0x0088ff);
+    scene.background = new THREE.Color(0x492514);
 
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
@@ -569,7 +698,6 @@ const setup = async () => {
 
         if (rayHit.hit) {
             setBlock(rayHit.x, rayHit.y, rayHit.z, -1);
-            updateMesh(mesh);
         }
     });
     document.addEventListener("pointerlockchange", () => {
@@ -597,34 +725,34 @@ const setup = async () => {
         renderer.setSize(window.innerWidth, window.innerHeight);
     });
 
-    generateWorld();
     camera.position.x = 9.5;
     camera.position.y = 20;
     camera.position.z = 9.5;
-
-    // const textureLoader = new THREE.TextureLoader();
-    // const bgTexture = textureLoader.load("bg.png");
-
-    // scene.background = bgTexture;
 
     const imageLoader = new THREE.ImageLoader();
     const image = await imageLoader.loadAsync("blocks.png");
 
     const texture = loadTexArray(image);
 
-    const material = new THREE.ShaderMaterial({
+    material = new THREE.ShaderMaterial({
         uniforms: {
             diffuse: { value: texture },
         },
+        vertexColors: true,
         vertexShader: vs,
         fragmentShader: fs,
         glslVersion: THREE.GLSL3,
     });
 
-    mesh = new THREE.Mesh(new THREE.BufferGeometry(), material);
-    updateMesh(mesh);
+    noise.seed(Math.random());
 
-    scene.add(mesh);
+    for (let x = 0; x < mapSizeInChunks; x++)
+    for (let y = 0; y < mapSizeInChunks; y++)
+    for (let z = 0; z < mapSizeInChunks; z++) {
+        let newChunk = new Chunk(chunkSize, x, y, z);
+        newChunk.generate();
+        setChunk(x, y, z, newChunk);
+    }
 
     draw();
 }
