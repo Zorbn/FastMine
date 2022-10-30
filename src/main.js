@@ -1,11 +1,10 @@
 /*
  * TODO:
  * Improve state handling, ie: player object, flight mode,
+ * Fix delta time getting too large.
  *
  * FEAT:
- * Scaffolding that costs money to place,
  * Spelunky-like cave generation,
- * Ores,
  * Sound,
  * Multiple levels w/ transition between,
  * Hazards,
@@ -14,18 +13,17 @@
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer();
+const moneyLabel = document.getElementById("money");
 
 const texComponents = 4; // RGBA
 
 const blockTexSize = 16;
-const blockCount = 8;
-const blockTexSpan = blockTexSize * blockCount;
+const blockTexCount = 16;
+const blockTexSpan = blockTexSize * blockTexCount;
 
 const breakingTexSize = 16;
 const breakingTexCount = 4;
 const breakingTexSpan = breakingTexSize * breakingTexCount;
-
-const barrierId = 4;
 
 const vs = `
 attribute vec3 uv3;
@@ -89,13 +87,38 @@ const loadTexArray = (image, depth, size, span) => {
     return texture;
 }
 
+// Create a random number generator using the "Simple Fast Counter"
+// algorithm. Uses a 128bit seed provided in 4 parts (a, b, c, d).
+const sfc32 = (a, b, c, d) => {
+    return () => {
+        // >>>= 0 and | 0 cause interpreter to switch
+        // numbers to int32 mode, useful for performance.
+        a >>>= 0; b >>>= 0; c >>>= 0; d >>>= 0;
+        let t = (a + b) | 0;
+        a = b ^ b >>> 9;
+        b = c + (c << 3) | 0;
+        c = (c << 21 | c >>> 11);
+        d = d + 1 | 0;
+        t = t + d | 0;
+        c = c + t | 0;
+        return (t >>> 0) / 4294967296;}
+}
+
 let totalTime = 0;
 let player;
 let input;
 let world;
 
+// Noise.seed() function only supports 65535 seed values.
+const seed = Math.random() * 65536;
+let rng = sfc32(0, 0, 0, seed);
+
 const update = (deltaTime) => {
+    let oldPlayerMoney = player.money;
     player.update(deltaTime, world, camera, input);
+    if (player.money != oldPlayerMoney) {
+        moneyLabel.innerText = `$${player.money}`;
+    }
 
     for (let [_hash, chunk] of world.chunks) {
         chunk.update(world);
@@ -119,6 +142,9 @@ const draw = (time) => {
 }
 
 const setup = async () => {
+    const hud = document.getElementById("hud");
+    hud.style.display = "flex";
+
     const bgColor = 0x492514;
     scene.background = new THREE.Color(bgColor);
 
@@ -135,7 +161,7 @@ const setup = async () => {
     const image = await imageLoader.loadAsync("res/blocks.png");
     const breakingImage = await imageLoader.loadAsync("res/breaking.png");
 
-    const texture = loadTexArray(image, blockCount, blockTexSize, blockTexSpan);
+    const texture = loadTexArray(image, blockTexCount, blockTexSize, blockTexSpan);
     const breakingTexture = loadTexArray(breakingImage, breakingTexCount, breakingTexSize, breakingTexSpan);
 
     material = new THREE.ShaderMaterial({
@@ -148,10 +174,10 @@ const setup = async () => {
         glslVersion: THREE.GLSL3,
     });
 
-    noise.seed(Math.random());
+    noise.seed(seed);
 
     world = new World(16, 4);
-    world.generate();
+    world.generate(rng);
 
     const playerSpawn = world.getPlayerSpawnPos();
     player = new Player(playerSpawn.x, playerSpawn.y, playerSpawn.z, breakingTexture);

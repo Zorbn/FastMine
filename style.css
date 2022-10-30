@@ -4,11 +4,25 @@ body {
 
 #hud {
     position: absolute;
-    width: 100%;
-    height: 100%;
+    width: 100vw;
+    height: 100vh;
+    display: none;
+    color: white;
+}
+
+#hud-center {
+    position: absolute;
+    width: 100vw;
+    height: 100vh;
     background-color: transparent;
     display: flex;
     justify-content: center;
     align-items: center;
     pointer-events: none;
+}
+
+#money {
+    padding: 1%;
+    font-family: "Fira Mono", monospace;
+    font-size: 1.5rem;
 }

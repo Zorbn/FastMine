@@ -9,7 +9,7 @@ const isCollidingWithBlock = (world, x, y, z, sizeX, sizeY, sizeZ) => {
         let cornerY = Math.floor(y + sizeY * 0.5 * yOff);
         let cornerZ = Math.floor(z + sizeZ * 0.5 * zOff);
 
-        if (world.getBlock(cornerX, cornerY, cornerZ) != -1) {
+        if (world.getBlock(cornerX, cornerY, cornerZ) != blocks.air.id) {
             return true;
         }
     }
@@ -88,8 +88,8 @@ const raycast = (world, startX, startY, startZ, dirX, dirY, dirZ, range) => {
 
     let lastDistToNext = 0;
 
-    let hitBlock = -1;
-    while (hitBlock == -1 && lastDistToNext < range) {
+    let hitBlock = blocks.air.id;
+    while (hitBlock == blocks.air.id && lastDistToNext < range) {
         lastX = blockX;
         lastY = blockY;
         lastZ = blockZ;
@@ -112,7 +112,7 @@ const raycast = (world, startX, startY, startZ, dirX, dirY, dirZ, range) => {
     }
 
     return {
-        hit: hitBlock != -1,
+        hit: hitBlock != blocks.air.id,
         block: hitBlock,
         distance: lastDistToNext,
         x: blockX,

@@ -5,11 +5,21 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SlowMine</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Mono:wght@700&display=swap" rel="stylesheet">
+
+    <!-- Style -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div id="hud">
-        <img src="res/cursor.png">
+        <span id="money">$0</span>
+        <div id="hud-center">
+            <img src="res/cursor.png">
+        </div>
     </div>
     <script src="deps/noisejs/perlin.js"></script>
     <script src="deps/three.js"></script>
@@ -20,6 +30,7 @@
     <script src="src/direction.js"></script>
     <script src="src/collision.js"></script>
     <script src="src/world.js"></script>
+    <script src="src/blocks.js"></script>
     <script src="src/main.js"></script>
 </body>
 </html>

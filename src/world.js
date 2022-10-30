@@ -55,7 +55,7 @@ class World {
         let localY = y % this.chunkSize;
         let localZ = z % this.chunkSize;
         let chunk = this.getChunk(chunkX, chunkY, chunkZ);
-        if (chunk == null) return -1;
+        if (chunk == null) return blocks.air.id;
         return chunk.getBlock(localX, localY, localZ);
     }
 
@@ -73,7 +73,7 @@ class World {
         for (let x = 0; x < this.chunkSize; x++)
         for (let y = 0; y < this.chunkSize; y++)
         for (let z = 0; z < this.chunkSize; z++) {
-            if (spawnChunk.getBlock(x, y, z) != -1) continue;
+            if (spawnChunk.getBlock(x, y, z) != blocks.air.id) continue;
 
             return {
                 x: spawnChunkWorldX + x + 0.5,
@@ -85,7 +85,7 @@ class World {
         let x = Math.floor(this.chunkSize * 0.5);
         let y = Math.floor(this.chunkSize * 0.5);
         let z = Math.floor(this.chunkSize * 0.5);
-        spawnChunk.setBlock(x, y, z, -1);
+        spawnChunk.setBlock(x, y, z, blocks.air.id);
 
         return {
             x: spawnChunkWorldX + x + 0.5,
@@ -94,12 +94,12 @@ class World {
         }
     }
 
-    generate = () => {
+    generate = (rng) => {
         for (let x = 0; x < this.mapSizeInChunks; x++)
         for (let y = 0; y < this.mapSizeInChunks; y++)
         for (let z = 0; z < this.mapSizeInChunks; z++) {
             let newChunk = new Chunk(this.chunkSize, x, y, z);
-            newChunk.generate(this.mapSize);
+            newChunk.generate(rng, this.mapSize);
             this.setChunk(x, y, z, newChunk);
         }
     }

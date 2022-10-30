@@ -1,3 +1,6 @@
+const shadeNoiseScale = 0.2;
+const caveNoiseScale = 0.1;
+
 class Chunk {
     constructor(size, x, y, z) {
         this.chunkX = x;
@@ -5,6 +8,7 @@ class Chunk {
         this.chunkZ = z;
         this.size = size;
         this.data = new Array(size * size * size);
+        this.shadeNoise = new Array(size * size * size);
         this.mesh = new THREE.Mesh(new THREE.BufferGeometry(), material);
         this.mesh.geometry.dynamic = true;
         this.needsUpdate = true;
@@ -25,7 +29,7 @@ class Chunk {
     }
 
     getBlock = (x, y, z) => {
-        if (x < 0 || x >= this.size || y < 0 || y >= this.size || z < 0 || z >= this.size) return -1;
+        if (x < 0 || x >= this.size || y < 0 || y >= this.size || z < 0 || z >= this.size) return blocks.air.id;
 
         return this.data[this.getBlockIndex(x, y, z)];
     }
@@ -55,9 +59,11 @@ class Chunk {
             let worldY = y + this.chunkY * this.size;
             let worldZ = z + this.chunkZ * this.size;
             const block = world.getBlock(worldX, worldY, worldZ);
+            const noiseValue = this.shadeNoise[x + y * this.size + z * this.size * this.size];
+
 
             // Don't render air.
-            if (block == -1) continue;
+            if (block == blocks.air.id) continue;
 
             for (let dir = 0; dir < 6; dir++) {
                 // Only generate faces that will be visible.
@@ -83,9 +89,10 @@ class Chunk {
                         uvs[vertexComponentI + 2] = block;
 
                         // Add color for this face.
-                        colors[vertexComponentI] = faceColors[dir];
-                        colors[vertexComponentI + 1] = faceColors[dir];
-                        colors[vertexComponentI + 2] = faceColors[dir];
+                        let faceColor = faceColors[dir] * 0.9 + noiseValue * 0.1;
+                        colors[vertexComponentI] = faceColor;
+                        colors[vertexComponentI + 1] = faceColor;
+                        colors[vertexComponentI + 2] = faceColor;
 
                         vertexComponentI += 3;
                         vertexI++;
@@ -101,9 +108,9 @@ class Chunk {
         this.mesh.geometry.verticesNeedUpdate = true;
     }
 
-    generate = (mapSize) => {
+    generate = (rng, mapSize) => {
         this.data.length = this.size * this.size * this.size;
-        this.data.fill(-1);
+        this.data.fill(blocks.air.id);
 
         for (let z = 0; z < this.size; z++)
         for (let y = 0; y < this.size; y++)
@@ -112,17 +119,31 @@ class Chunk {
             const worldY = y + this.chunkY * this.size;
             const worldZ = z + this.chunkZ * this.size;
 
+            const shadeNoiseValue = noise.simplex3(worldX * shadeNoiseScale, worldY * shadeNoiseScale, worldZ * shadeNoiseScale);
+            this.shadeNoise[x + y * this.size + z * this.size * this.size] = shadeNoiseValue;
+
             if (worldX == 0 || worldX == mapSize - 1 ||
                 worldY == 0 || worldY == mapSize - 1 ||
                 worldZ == 0 || worldZ == mapSize - 1) {
-                this.setBlock(x, y, z, barrierId);
+                this.setBlock(x, y, z, blocks.barrier.id);
                 continue;
             }
 
-            const noiseValue = noise.simplex3(worldX * 0.1, worldY * 0.1, worldZ * 0.1);
+            const noiseValue = noise.simplex3(worldX * caveNoiseScale, worldY * caveNoiseScale, worldZ * caveNoiseScale);
 
             if (noiseValue < 0.4) {
-                this.setBlock(x, y, z, 0);
+                let randNum = rng();
+                let block = blocks.dirt.id;
+
+                if (randNum < 0.002) {
+                    block = blocks.emerald.id;
+                } else if (randNum < 0.03) {
+                    block = blocks.iron.id;
+                } else if (randNum < 0.07) {
+                    block = blocks.coal.id;
+                }
+
+                this.setBlock(x, y, z, block);
             }
         }
     }
