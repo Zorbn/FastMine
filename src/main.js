@@ -100,7 +100,8 @@ const sfc32 = (a, b, c, d) => {
         d = d + 1 | 0;
         t = t + d | 0;
         c = c + t | 0;
-        return (t >>> 0) / 4294967296;}
+        return (t >>> 0) / 4294967296;
+    }
 }
 
 let totalTime = 0;

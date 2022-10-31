@@ -190,6 +190,9 @@ class Player {
             moveRight /= moveMag;
         }
 
+        let speedMultiplier = isCrouching ? 0.5 : 1;
+        let currentSpeed = this.speed * speedMultiplier;
+
         moveForward *= deltaTime;
         moveRight *= deltaTime;
         moveUp *= deltaTime;
@@ -198,8 +201,8 @@ class Player {
         let newY = this.y;
         let newZ = this.z;
 
-        newX += moveForward * this.forwardX * this.speed;
-        newX += moveRight * this.rightX * this.speed;
+        newX += moveForward * this.forwardX * currentSpeed;
+        newX += moveRight * this.rightX * currentSpeed;
 
         if (isCollidingWithBlock(world, newX, newY, newZ, this.size, this.size, this.size)) {
             newX = this.x;
@@ -207,8 +210,8 @@ class Player {
             newX = this.x;
         }
 
-        newZ += moveForward * this.forwardZ * this.speed;
-        newZ += moveRight * this.rightZ * this.speed;
+        newZ += moveForward * this.forwardZ * currentSpeed;
+        newZ += moveRight * this.rightZ * currentSpeed;
 
         if (isCollidingWithBlock(world, newX, newY, newZ, this.size, this.size, this.size)) {
             newZ = this.z;
@@ -218,7 +221,7 @@ class Player {
 
         if (this.isFlying) {
             this.yVelocity = 0;
-            newY += moveUp * this.speed;
+            newY += moveUp * currentSpeed;
         } else {
             this.yVelocity -= gravity;
             newY += this.yVelocity * deltaTime;
@@ -250,9 +253,6 @@ class Player {
     }
 
     onMouseMove = (event, camera) => {
-        if (event.movementX > 20 || event.movementY > 20)
-            console.log(event.movementX, event.movementY);
-
         this.angle.x -= event.movementY * mouseSensitivity;
         this.angle.y -= event.movementX * mouseSensitivity;
         this.angle.x = Math.max(Math.min(this.angle.x, maxLookAngle), -maxLookAngle)

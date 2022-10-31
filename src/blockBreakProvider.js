@@ -1,0 +1,9 @@
+class BlockBreakProvider {
+    constructor() {
+
+    }
+
+    mineBlock() {
+
+    }
+}
