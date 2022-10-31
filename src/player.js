@@ -1,6 +1,3 @@
-const breakingMeshSize = 1;
-const breakingMeshPaddedSize = breakingMeshSize + 0.005;
-
 // TODO: Isolate general movement code for use in player and NPCs.
 const gravity = 0.5;
 const mouseSensitivity = 0.002;
@@ -9,37 +6,8 @@ const maxLookAngle = Math.PI * 0.5 * 0.99;
 const reach = 4;
 const scaffoldCost = 5;
 
-const breakingVs = `
-out vec2 vertUv;
-
-void main() {
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-    vertUv = uv;
-}
-`;
-
-const breakingFs = `
-precision highp float;
-precision highp int;
-precision highp sampler2DArray;
-
-uniform sampler2DArray diffuse;
-uniform int depth;
-in vec2 vertUv;
-
-out vec4 outColor;
-
-void main() {
-    outColor = texture(diffuse, vec3(vertUv, depth));
-
-    if (outColor.a < 0.1) {
-        discard;
-    }
-}
-`;
-
 class Player {
-    constructor(x, y, z, breakingTexture) {
+    constructor(x, y, z) {
         this.x = x;
         this.y = y;
         this.z = z;
@@ -61,76 +29,19 @@ class Player {
         this.isFlying = false;
         this.yVelocity = 0;
 
-        this.breakingBlockX = 0;
-        this.breakingBlockY = 0;
-        this.breakingBlockZ = 0;
-        this.breakingProgress = 0;
-        this.blockIdBeingBroken = 0;
-
-        this.breakingMaterial = new THREE.ShaderMaterial({
-            uniforms: {
-                diffuse: { value: breakingTexture },
-                depth: { value: 2 },
-            },
-            vertexShader: breakingVs,
-            fragmentShader: breakingFs,
-            glslVersion: THREE.GLSL3,
-        });
-
-        this.breakingMesh = new THREE.Mesh(
-            new THREE.BoxGeometry(
-                breakingMeshPaddedSize,
-                breakingMeshPaddedSize,
-                breakingMeshPaddedSize
-            ), this.breakingMaterial);
-
-        scene.add(this.breakingMesh);
-
         this.money = 0;
     }
 
-    interact = (deltaTime, world, input, enemies) => {
-        this.breakingMesh.visible = false;
-        let lastBreakingProgress = this.breakingProgress;
-        this.breakingProgress = 0;
-
+    interact = (deltaTime, world, input, enemies, blockBreakProvider) => {
         if (input.isMouseButtonPressed(0)) {
             let rayHit = raycast(world, this.x, this.y, this.z, this.lookX, this.lookY, this.lookZ, reach);
 
             if (rayHit.hit) {
-                // Check if the player is breaking a new block.
-                if (rayHit.x != this.breakingBlockX || rayHit.y != this.breakingBlockY ||
-                    rayHit.z != this.breakingBlockZ) {
-                    this.breakingBlockX = rayHit.x;
-                    this.breakingBlockY = rayHit.y;
-                    this.breakingBlockZ = rayHit.z;
-                    this.blockIdBeingBroken = world.getBlock(rayHit.x, rayHit.y, rayHit.z);
-                    lastBreakingProgress = 0;
+                let minedBlock = blockBreakProvider.mineBlock(world, rayHit.x, rayHit.y, rayHit.z, deltaTime);
+
+                if (minedBlock != blocks.air.id) {
+                    this.money += blocksById.get(minedBlock).value;
                 }
-
-                const blockBeingBroken = blocksById.get(this.blockIdBeingBroken);
-
-                this.breakingProgress = lastBreakingProgress + deltaTime;
-
-                // Negative breakTime signals an unbreakable block.
-                const unbreakable = blockBeingBroken.breakTime < 0;
-
-                if (unbreakable) {
-                    this.breakingProgress = 0;
-                }
-
-                if (!unbreakable && this.breakingProgress >= blockBeingBroken.breakTime) {
-                    world.setBlock(rayHit.x, rayHit.y, rayHit.z, blocks.air.id);
-
-                    this.money += blockBeingBroken.value;
-                    this.breakingProgress = 0;
-                }
-
-                this.breakingMaterial.uniforms.depth.value = this.breakingProgress / blockBeingBroken.breakTime * breakingTexCount;
-                this.breakingMesh.visible = true;
-                this.breakingMesh.position.x = rayHit.x + 0.5;
-                this.breakingMesh.position.y = rayHit.y + 0.5;
-                this.breakingMesh.position.z = rayHit.z + 0.5;
             }
         } else if (input.wasMouseButtonPressed(2) && this.money >= scaffoldCost) {
             let rayHit = raycast(world, this.x, this.y, this.z, this.lookX, this.lookY, this.lookZ, reach);
@@ -147,7 +58,7 @@ class Player {
     }
 
     move = (deltaTime, world, camera, input) => {
-        let isCrouching = input.isKeyPressed("ShiftLeft");
+        let isSneaking = input.isKeyPressed("ShiftLeft");
         let grounded = isOnGround(world, this.x, this.y, this.z, this.size, this.size, this.size);
 
         let moveForward = 0;
@@ -175,7 +86,7 @@ class Player {
                 moveUp += 1;
             }
 
-            if (isCrouching) {
+            if (isSneaking) {
                 moveUp -= 1;
             }
         } else {
@@ -190,7 +101,7 @@ class Player {
             moveRight /= moveMag;
         }
 
-        let speedMultiplier = isCrouching ? 0.5 : 1;
+        let speedMultiplier = isSneaking ? 0.5 : 1;
         let currentSpeed = this.speed * speedMultiplier;
 
         moveForward *= deltaTime;
@@ -206,7 +117,7 @@ class Player {
 
         if (isCollidingWithBlock(world, newX, newY, newZ, this.size, this.size, this.size)) {
             newX = this.x;
-        } else if (isCrouching && grounded && !isOnGround(world, newX, newY, newZ, this.size, this.size, this.size)) {
+        } else if (isSneaking && grounded && !isOnGround(world, newX, newY, newZ, this.size, this.size, this.size)) {
             newX = this.x;
         }
 
@@ -215,7 +126,7 @@ class Player {
 
         if (isCollidingWithBlock(world, newX, newY, newZ, this.size, this.size, this.size)) {
             newZ = this.z;
-        } else if (isCrouching && grounded && !isOnGround(world, newX, newY, newZ, this.size, this.size, this.size)) {
+        } else if (isSneaking && grounded && !isOnGround(world, newX, newY, newZ, this.size, this.size, this.size)) {
             newZ = this.z;
         }
 
@@ -242,8 +153,8 @@ class Player {
         camera.quaternion.setFromEuler(this.angle);
     }
 
-    update = (deltaTime, world, camera, input, enemies) => {
-        this.interact(deltaTime, world, input, enemies);
+    update = (deltaTime, world, camera, input, enemies, blockBreakProvider) => {
+        this.interact(deltaTime, world, input, enemies, blockBreakProvider);
 
         if (input.wasKeyPressed("KeyF")) {
             this.isFlying = !this.isFlying;

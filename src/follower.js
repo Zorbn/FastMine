@@ -73,7 +73,7 @@ class Follower {
 
             if (!overlapsBlock(this.x, this.y, this.z, this.size, this.size, this.size, blockX, lowerBlockY, blockZ) && // Follower won't get stuck inside block.
                 world.getBlock(blockX, lowerBlockY, blockZ) == blocks.air.id && // Block is currently empty.
-                world.isBlockSupported(blockX, lowerBlockY - 1, blockZ)) {      // Block is supported.
+                world.isBlockSupported(blockX, lowerBlockY, blockZ)) {      // Block is supported.
                 world.setBlock(blockX, lowerBlockY, blockZ, blocks.wood.id);
             }
         }
@@ -84,12 +84,11 @@ class Follower {
     }
 
     updateMining = (deltaTime, world, player) => {
-        if (world.getBlock(this.targetBlockX, this.targetBlockY, this.targetBlockZ) == blocks.air.id) {
-            this.state = followerStates.chasing;
-            return;
-        }
+        let minedBlock = blockBreakProvider.mineBlock(world, this.targetBlockX, this.targetBlockY, this.targetBlockZ, deltaTime);
 
-        world.setBlock(this.targetBlockX, this.targetBlockY, this.targetBlockZ, blocks.air.id);
+        if (minedBlock != blocks.air.id) {
+            this.state = followerStates.chasing;
+        }
     }
 
     beginMining = (x, y, z) => {

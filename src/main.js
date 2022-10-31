@@ -109,14 +109,17 @@ let player;
 let input;
 let world;
 let enemies = [];
+let blockBreakProvider;
 
 // Noise.seed() function only supports 65535 seed values.
 const seed = Math.random() * 65536;
 let rng = sfc32(0, 0, 0, seed);
 
 const update = (deltaTime) => {
+    blockBreakProvider.preUpdate();
+
     let oldPlayerMoney = player.money;
-    player.update(deltaTime, world, camera, input, enemies);
+    player.update(deltaTime, world, camera, input, enemies, blockBreakProvider);
     if (player.money != oldPlayerMoney) {
         moneyLabel.innerText = `$${player.money}`;
     }
@@ -130,6 +133,8 @@ const update = (deltaTime) => {
     }
 
     input.update();
+
+    blockBreakProvider.postUpdate();
 }
 
 const draw = (time) => {
@@ -170,6 +175,8 @@ const setup = async () => {
     const texture = loadTexArray(image, blockTexCount, blockTexSize, blockTexSpan);
     const breakingTexture = loadTexArray(breakingImage, breakingTexCount, breakingTexSize, breakingTexSpan);
 
+    blockBreakProvider = new BlockBreakProvider(breakingTexture, 100);
+
     material = new THREE.ShaderMaterial({
         uniforms: {
             diffuse: { value: texture },
@@ -186,7 +193,7 @@ const setup = async () => {
     world.generate(rng);
 
     const playerSpawn = world.getPlayerSpawnPos();
-    player = new Player(playerSpawn.x, playerSpawn.y, playerSpawn.z, breakingTexture);
+    player = new Player(playerSpawn.x, playerSpawn.y, playerSpawn.z);
 
     input = new Input();
     const onMouseMove = e => {
