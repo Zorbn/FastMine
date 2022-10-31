@@ -1,6 +1,7 @@
 const breakingMeshSize = 1;
 const breakingMeshPaddedSize = breakingMeshSize + 0.005;
 
+// TODO: Isolate general movement code for use in player and NPCs.
 const gravity = 0.5;
 const mouseSensitivity = 0.002;
 const maxLookAngle = Math.PI * 0.5 * 0.99;
@@ -88,7 +89,7 @@ class Player {
         this.money = 0;
     }
 
-    interact = (deltaTime, world, input) => {
+    interact = (deltaTime, world, input, enemies) => {
         this.breakingMesh.visible = false;
         let lastBreakingProgress = this.breakingProgress;
         this.breakingProgress = 0;
@@ -138,6 +139,10 @@ class Player {
                 this.money -= scaffoldCost;
                 world.setBlock(rayHit.lastX, rayHit.lastY, rayHit.lastZ, blocks.metal.id);
             }
+        } else if (input.wasMouseButtonPressed(1)) {
+            let rayHit = raycast(world, this.x, this.y, this.z, this.lookX, this.lookY, this.lookZ, reach);
+
+            enemies.push(new Follower(rayHit.lastX + 0.5, rayHit.lastY + 0.5, rayHit.lastZ + 0.5));
         }
     }
 
@@ -234,8 +239,8 @@ class Player {
         camera.quaternion.setFromEuler(this.angle);
     }
 
-    update = (deltaTime, world, camera, input) => {
-        this.interact(deltaTime, world, input);
+    update = (deltaTime, world, camera, input, enemies) => {
+        this.interact(deltaTime, world, input, enemies);
 
         if (input.wasKeyPressed("KeyF")) {
             this.isFlying = !this.isFlying;
@@ -245,6 +250,9 @@ class Player {
     }
 
     onMouseMove = (event, camera) => {
+        if (event.movementX > 20 || event.movementY > 20)
+            console.log(event.movementX, event.movementY);
+
         this.angle.x -= event.movementY * mouseSensitivity;
         this.angle.y -= event.movementX * mouseSensitivity;
         this.angle.x = Math.max(Math.min(this.angle.x, maxLookAngle), -maxLookAngle)

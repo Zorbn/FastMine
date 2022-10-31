@@ -59,6 +59,15 @@ class World {
         return chunk.getBlock(localX, localY, localZ);
     }
 
+    isBlockSupported = (x, y, z) => {
+        return this.getBlock(x + 1, y, z) != blocks.air.id ||
+            this.getBlock(x - 1, y, z) != blocks.air.id ||
+            this.getBlock(x, y + 1, z) != blocks.air.id ||
+            this.getBlock(x, y - 1, z) != blocks.air.id ||
+            this.getBlock(x, y, z + 1) != blocks.air.id ||
+            this.getBlock(x, y, z - 1) != blocks.air.id;
+    }
+
     getPlayerSpawnPos = () => {
         const spawnChunkX = this.mapSizeInChunks - 1;
         const spawnChunkY = this.mapSizeInChunks - 1;

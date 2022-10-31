@@ -17,6 +17,29 @@ const isCollidingWithBlock = (world, x, y, z, sizeX, sizeY, sizeZ) => {
     return false;
 }
 
+// Return the first block being collided with.
+const getBlockCollision = (world, x, y, z, sizeX, sizeY, sizeZ) => {
+    for (let i = 0; i < 8; i++) {
+        let xOff = i % 2 * 2 - 1;
+        let yOff = Math.floor(i / 4) * 2 - 1;
+        let zOff = Math.floor(i / 2) % 2 * 2 - 1;
+
+        let cornerX = Math.floor(x + sizeX * 0.5 * xOff);
+        let cornerY = Math.floor(y + sizeY * 0.5 * yOff);
+        let cornerZ = Math.floor(z + sizeZ * 0.5 * zOff);
+
+        if (world.getBlock(cornerX, cornerY, cornerZ) != blocks.air.id) {
+            return {
+                x: cornerX,
+                y: cornerY,
+                z: cornerZ,
+            };
+        }
+    }
+
+    return null;
+}
+
 // Check every corner of a cubic object to see if it overlaps a certain block.
 const overlapsBlock = (x, y, z, sizeX, sizeY, sizeZ, blockX, blockY, blockZ) => {
     let halfSizeX = sizeX * 0.5;
@@ -82,13 +105,14 @@ const raycast = (world, startX, startY, startZ, dirX, dirY, dirZ, range) => {
     let blockX = Math.floor(startX);
     let blockY = Math.floor(startY);
     let blockZ = Math.floor(startZ);
+
     let lastX = blockX;
     let lastY = blockY;
     let lastZ = blockZ;
 
     let lastDistToNext = 0;
 
-    let hitBlock = blocks.air.id;
+    let hitBlock = world.getBlock(blockX, blockY, blockZ);
     while (hitBlock == blocks.air.id && lastDistToNext < range) {
         lastX = blockX;
         lastY = blockY;

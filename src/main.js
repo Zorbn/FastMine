@@ -107,6 +107,7 @@ let totalTime = 0;
 let player;
 let input;
 let world;
+let enemies = [];
 
 // Noise.seed() function only supports 65535 seed values.
 const seed = Math.random() * 65536;
@@ -114,13 +115,17 @@ let rng = sfc32(0, 0, 0, seed);
 
 const update = (deltaTime) => {
     let oldPlayerMoney = player.money;
-    player.update(deltaTime, world, camera, input);
+    player.update(deltaTime, world, camera, input, enemies);
     if (player.money != oldPlayerMoney) {
         moneyLabel.innerText = `$${player.money}`;
     }
 
     for (let [_hash, chunk] of world.chunks) {
         chunk.update(world);
+    }
+
+    for (let enemy of enemies) {
+        enemy.update(deltaTime, world, player);
     }
 
     input.update();

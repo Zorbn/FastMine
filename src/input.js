@@ -29,7 +29,13 @@ class Input {
 
     addListeners = (onMouseMove) => {
         document.addEventListener("click", () => {
-            document.body.requestPointerLock();
+            document.body.requestPointerLock({
+                // Get raw mouse input. This prevents
+                // occasional mouse snapping, and keeps
+                // the experience consistent despite OS
+                // settings.
+                unadjustedMovement: true,
+            });
         });
 
         document.addEventListener("pointerlockchange", () => {
