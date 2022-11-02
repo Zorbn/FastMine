@@ -1,12 +1,9 @@
 /*
- * TODO:
- * Improve state handling, ie: player object, flight mode,
- *
  * FEAT:
- * Spelunky-like cave generation,
+ * Enemy spawning,
  * Sound,
  * Multiple levels w/ transition between,
- * Hazards,
+ * Main menu/and death screen for when player dies.
  */
 
 import * as THREE from "../deps/three.js";
@@ -19,6 +16,9 @@ const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer();
 const moneyLabel = document.getElementById("money");
+const healthImage = document.getElementById("health");
+const healthBackground = document.getElementById("health-background");
+const healthBarWidth = 10;
 
 const texComponents = 4; // RGBA
 
@@ -32,8 +32,35 @@ const breakingTexSpan = breakingTexSize * breakingTexCount;
 const canvas = new OffscreenCanvas(blockTexSpan, blockTexSize);
 const ctx2D = canvas.getContext("2d");
 
+// Create a random number generator using the "Simple Fast Counter"
+// algorithm. Uses a 128bit seed provided in 4 parts (a, b, c, d).
+const sfc32 = (a, b, c, d) => {
+    return () => {
+        // >>>= 0 and | 0 cause interpreter to switch
+        // numbers to int32 mode, useful for performance.
+        a >>>= 0; b >>>= 0; c >>>= 0; d >>>= 0;
+        let t = (a + b) | 0;
+        a = b ^ b >>> 9;
+        b = c + (c << 3) | 0;
+        c = (c << 21 | c >>> 11);
+        d = d + 1 | 0;
+        t = t + d | 0;
+        c = c + t | 0;
+        return (t >>> 0) / 4294967296;
+    }
+}
+
+// Noise.seed() function only supports 65535 seed values.
+const seed = Math.random() * 65536;
+const rng = sfc32(0, 0, 0, seed);
+
 let lastTime = 0;
-let material;
+let totalTime = 0;
+let player;
+let input;
+let world;
+let enemies = [];
+let blockBreakProvider;
 
 const loadTexArray = (image, depth, size, span) => {
     ctx2D.clearRect(0, 0, canvas.width, canvas.height);
@@ -63,43 +90,22 @@ const loadTexArray = (image, depth, size, span) => {
     return texture;
 }
 
-// Create a random number generator using the "Simple Fast Counter"
-// algorithm. Uses a 128bit seed provided in 4 parts (a, b, c, d).
-const sfc32 = (a, b, c, d) => {
-    return () => {
-        // >>>= 0 and | 0 cause interpreter to switch
-        // numbers to int32 mode, useful for performance.
-        a >>>= 0; b >>>= 0; c >>>= 0; d >>>= 0;
-        let t = (a + b) | 0;
-        a = b ^ b >>> 9;
-        b = c + (c << 3) | 0;
-        c = (c << 21 | c >>> 11);
-        d = d + 1 | 0;
-        t = t + d | 0;
-        c = c + t | 0;
-        return (t >>> 0) / 4294967296;
-    }
+const updateHealthBar = () => {
+    let newWidth = player.health * 0.01 * healthBarWidth;
+    healthImage.style.width = `${newWidth}rem`;
 }
 
-let totalTime = 0;
-let player;
-let input;
-let world;
-let enemies = [];
-let blockBreakProvider;
-
-// Noise.seed() function only supports 65535 seed values.
-const seed = Math.random() * 65536;
-let rng = sfc32(0, 0, 0, seed);
+const updateMoneyLabel = () => {
+    moneyLabel.innerText = `$${player.money}`;
+}
 
 const update = (deltaTime) => {
     blockBreakProvider.preUpdate();
 
     let oldPlayerMoney = player.money;
+    let oldPlayerHealth = player.health;
+
     player.update(deltaTime, scene, world, camera, input, enemies, blockBreakProvider);
-    if (player.money != oldPlayerMoney) {
-        moneyLabel.innerText = `$${player.money}`;
-    }
 
     for (let [_hash, chunk] of world.chunks) {
         chunk.update(world);
@@ -112,6 +118,13 @@ const update = (deltaTime) => {
     input.update();
 
     blockBreakProvider.postUpdate();
+
+    if (player.money != oldPlayerMoney) {
+        updateMoneyLabel();
+    }
+    if (player.health != oldPlayerHealth) {
+        updateHealthBar();
+    }
 }
 
 const draw = (time) => {
@@ -120,8 +133,10 @@ const draw = (time) => {
     const deltaTime = (time - lastTime) * 0.001;
     lastTime = time;
 
+    // Pause game when player is not interacting with the page.
     if (!document.hasFocus() && totalTime != 0) return;
-    if (isNaN(deltaTime)) return;
+    // Ignore outlier delta time values.
+    if (isNaN(deltaTime) || deltaTime > 0.100) return;
     totalTime += deltaTime;
 
     update(deltaTime);
@@ -130,9 +145,6 @@ const draw = (time) => {
 }
 
 const setup = async () => {
-    const hud = document.getElementById("hud");
-    hud.style.display = "flex";
-
     const bgColor = 0x492514;
     scene.background = new THREE.Color(bgColor);
 
@@ -168,7 +180,14 @@ const setup = async () => {
     }
     input.addListeners(onMouseMove);
 
+    updateMoneyLabel();
+    updateHealthBar();
+
     draw();
+
+    const hud = document.getElementById("hud");
+    hud.style.display = "flex";
+    healthBackground.style.width = `${healthBarWidth}rem`;
 }
 
 setup();

@@ -8,6 +8,7 @@ body {
     height: 100vh;
     display: none;
     color: white;
+    flex-direction: column;
 }
 
 #hud-center {
@@ -25,4 +26,28 @@ body {
     padding: 1%;
     font-family: "Fira Mono", monospace;
     font-size: 1.5rem;
+}
+
+#healthbar {
+    margin: 1% 1% 0% 1%;
+}
+
+#health {
+    position: relative;
+    top: -1.75rem;
+    left: 0.25rem;
+    margin-bottom: -1.75rem;
+    background-color: #00dd00;
+    z-index: 1;
+    width: 0;
+    height: 1.5rem;
+}
+
+#health-background {
+    background-color: #dd0000;
+    border-width: 0.25rem;
+    border-style: solid;
+    border-color: #ffffff;
+    width: 10rem;
+    height: 1.5rem;
 }

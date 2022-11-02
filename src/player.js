@@ -2,7 +2,7 @@ import * as THREE from "../deps/three.js";
 import { gravity, isOnGround, isCollidingWithBlock, overlapsBlock } from "./physics.js";
 import { blocks, blocksById } from "./blocks.js";
 import { raycast } from "./physics.js";
-import { Follower } from "./follower.js";
+import { EnemyMiner } from "./enemyMiner.js";
 
 const mouseSensitivity = 0.002;
 const maxLookAngle = Math.PI * 0.5 * 0.99;
@@ -34,6 +34,12 @@ export class Player {
         this.yVelocity = 0;
 
         this.money = 0;
+        this.health = 100;
+    }
+
+    damage = (amount) => {
+        this.health -= amount;
+        console.log(this.health);
     }
 
     interact = (deltaTime, scene, world, input, enemies, blockBreakProvider) => {
@@ -57,7 +63,7 @@ export class Player {
         } else if (input.wasMouseButtonPressed(1)) {
             let rayHit = raycast(world, this.x, this.y, this.z, this.lookX, this.lookY, this.lookZ, reach);
 
-            enemies.push(new Follower(rayHit.lastX + 0.5, rayHit.lastY + 0.5, rayHit.lastZ + 0.5, scene));
+            enemies.push(new EnemyMiner(rayHit.lastX + 0.5, rayHit.lastY + 0.5, rayHit.lastZ + 0.5, scene));
         }
     }
 

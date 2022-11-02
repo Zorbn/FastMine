@@ -3,7 +3,7 @@ import { ghostMinerModel } from "./resources.js";
 import { blocks } from "./blocks.js";
 import { gravity, getBlockCollision, isOnGround, overlapsBlock } from "./physics.js";
 
-const followerStates = {
+const enemyMinerStates = {
     chasing: 0,
     jumping: 1,
     mining: 2,
@@ -12,14 +12,16 @@ const followerStates = {
 const meshYOffset = 0.1;
 const animationSpeed = 3;
 const legRangeOfMotion = Math.PI * 0.25;
+const attackCooldown = 0.5;
+const attackDamage = 10;
 
-export class Follower {
+export class EnemyMiner {
     constructor(x, y, z, scene) {
         this.x = x;
         this.y = y;
         this.z = z;
         this.size = 0.8;
-        this.state = followerStates.chasing;
+        this.state = enemyMinerStates.chasing;
         this.yVelocity = 0;
         this.targetBlockX = 0;
         this.targetBlockY = 0;
@@ -28,6 +30,7 @@ export class Follower {
         this.newY = this.y;
         this.newZ = this.z;
         this.speed = 2;
+        this.attackTimer = attackCooldown;
 
         this.mesh = new THREE.Object3D().copy(ghostMinerModel);
         this.leftLeg = this.mesh.getObjectByName("lLeg");
@@ -36,6 +39,14 @@ export class Follower {
 
         scene.add(this.mesh);
 
+    }
+
+    attack = (player) => {
+        if (this.attackTimer <= 0) {
+            this.attackTimer = attackCooldown;
+
+            player.damage(attackDamage);
+        }
     }
 
     updateChasing = (deltaTime, world, player, blockBreakProvider) => {
@@ -47,7 +58,12 @@ export class Follower {
         this.mesh.rotation.y = Math.atan2(distX, distZ);
 
         let distMag = Math.sqrt(distX * distX + distZ * distZ);
-        if (distMag <= 1) return;
+
+        if (distMag <= 1) {
+            this.attack(player);
+            return;
+        }
+
         distX /= distMag;
         distZ /= distMag;
 
@@ -55,7 +71,7 @@ export class Follower {
         this.newZ += distZ * deltaTime * this.speed;
 
         if (player.y - this.y > 0.2) {
-            this.state = followerStates.jumping;
+            this.state = enemyMinerStates.jumping;
         }
 
         this.animationProgress += deltaTime * animationSpeed * this.speed;
@@ -82,7 +98,7 @@ export class Follower {
         }
 
         if (this.y >= player.y) {
-            this.state = followerStates.chasing;
+            this.state = enemyMinerStates.chasing;
         }
     }
 
@@ -90,12 +106,12 @@ export class Follower {
         let minedBlock = blockBreakProvider.mineBlock(world, this.targetBlockX, this.targetBlockY, this.targetBlockZ, deltaTime);
 
         if (world.getBlock(this.targetBlockX, this.targetBlockY, this.targetBlockZ) == blocks.air.id || minedBlock != blocks.air.id) {
-            this.state = followerStates.chasing;
+            this.state = enemyMinerStates.chasing;
         }
     }
 
     beginMining = (x, y, z) => {
-        this.state = followerStates.mining;
+        this.state = enemyMinerStates.mining;
         this.targetBlockX = x;
         this.targetBlockY = y;
         this.targetBlockZ = z;
@@ -107,16 +123,18 @@ export class Follower {
         this.newZ = this.z;
 
         switch (this.state) {
-            case followerStates.chasing:
+            case enemyMinerStates.chasing:
                 this.updateChasing(deltaTime, world, player, blockBreakProvider);
                 break;
-            case followerStates.jumping:
+            case enemyMinerStates.jumping:
                 this.updateJumping(deltaTime, world, player, blockBreakProvider);
                 break;
-            case followerStates.mining:
+            case enemyMinerStates.mining:
                 this.updateMining(deltaTime, world, player, blockBreakProvider);
                 break;
         }
+
+        this.attackTimer -= deltaTime;
 
         this.yVelocity -= gravity;
         this.newY += this.yVelocity * deltaTime;
@@ -126,8 +144,8 @@ export class Follower {
             this.yVelocity = 0;
             this.newY = this.y;
 
-            if (this.state == followerStates.jumping && yCollision.y > this.y ||
-                this.state == followerStates.chasing && yCollision.y < this.y && this.y - player.y > 0.2) {
+            if (this.state == enemyMinerStates.jumping && yCollision.y > this.y ||
+                this.state == enemyMinerStates.chasing && yCollision.y < this.y && this.y - player.y > 0.2) {
                 this.beginMining(yCollision.x, yCollision.y, yCollision.z);
             }
         }
