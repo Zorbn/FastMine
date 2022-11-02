@@ -1,5 +1,9 @@
+import { blocks } from "./blocks.js";
+
+export const gravity = 0.5;
+
 // Check every corner of a cubic object for collisions.
-const isCollidingWithBlock = (world, x, y, z, sizeX, sizeY, sizeZ) => {
+export const isCollidingWithBlock = (world, x, y, z, sizeX, sizeY, sizeZ) => {
     for (let i = 0; i < 8; i++) {
         let xOff = i % 2 * 2 - 1;
         let yOff = Math.floor(i / 4) * 2 - 1;
@@ -18,7 +22,7 @@ const isCollidingWithBlock = (world, x, y, z, sizeX, sizeY, sizeZ) => {
 }
 
 // Return the first block being collided with.
-const getBlockCollision = (world, x, y, z, sizeX, sizeY, sizeZ) => {
+export const getBlockCollision = (world, x, y, z, sizeX, sizeY, sizeZ) => {
     for (let i = 0; i < 8; i++) {
         let xOff = i % 2 * 2 - 1;
         let yOff = Math.floor(i / 4) * 2 - 1;
@@ -41,7 +45,7 @@ const getBlockCollision = (world, x, y, z, sizeX, sizeY, sizeZ) => {
 }
 
 // Check every corner of a cubic object to see if it overlaps a certain block.
-const overlapsBlock = (x, y, z, sizeX, sizeY, sizeZ, blockX, blockY, blockZ) => {
+export const overlapsBlock = (x, y, z, sizeX, sizeY, sizeZ, blockX, blockY, blockZ) => {
     let halfSizeX = sizeX * 0.5;
     let halfSizeY = sizeY * 0.5;
     let halfSizeZ = sizeZ * 0.5;
@@ -51,12 +55,12 @@ const overlapsBlock = (x, y, z, sizeX, sizeY, sizeZ, blockX, blockY, blockZ) => 
         z + halfSizeZ > blockZ && z - halfSizeZ < blockZ + 1;
 }
 
-const isOnGround = (world, x, y, z, sizeX, sizeY, sizeZ) => {
+export const isOnGround = (world, x, y, z, sizeX, sizeY, sizeZ) => {
     let feetHitboxSize = 0.1;
     return isCollidingWithBlock(world, x, y - (sizeY + feetHitboxSize) * 0.5, z, sizeX, feetHitboxSize, sizeZ);
 }
 
-const raycast = (world, startX, startY, startZ, dirX, dirY, dirZ, range) => {
+export const raycast = (world, startX, startY, startZ, dirX, dirY, dirZ, range) => {
     // Prevent initial step from being 0, it creates artifacts in the algorithm.
     // if (startX - Math.floor(startX) == 0) {
     //     startX -= 0.01;

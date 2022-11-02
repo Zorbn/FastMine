@@ -1,4 +1,8 @@
-class World {
+import { Chunk } from "./chunk.js";
+import { hashVector } from "./gameMath.js";
+import { blocks } from "./blocks.js";
+
+export class World {
     constructor(chunkSize, mapSizeInChunks) {
         this.chunkSize = chunkSize;
         this.mapSizeInChunks = mapSizeInChunks;
@@ -99,11 +103,11 @@ class World {
         }
     }
 
-    generate = (rng) => {
+    generate = (rng, scene, texture) => {
         for (let x = 0; x < this.mapSizeInChunks; x++)
         for (let y = 0; y < this.mapSizeInChunks; y++)
         for (let z = 0; z < this.mapSizeInChunks; z++) {
-            let newChunk = new Chunk(this.chunkSize, x, y, z);
+            let newChunk = new Chunk(this.chunkSize, x, y, z, scene, texture);
             newChunk.generate(rng, this.mapSize);
             this.setChunk(x, y, z, newChunk);
         }

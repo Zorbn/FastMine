@@ -1,4 +1,4 @@
-const blocks = {
+export const blocks = {
     air: {
         id: -1,
         value: 0,
@@ -51,7 +51,7 @@ const blocks = {
     },
 };
 
-const blocksById = new Map();
+export const blocksById = new Map();
 for (let [name, data] of Object.entries(blocks)) {
     let namedData = data;
     namedData.name = name;

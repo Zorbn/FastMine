@@ -1,5 +1,4 @@
-
-const cubeVertices = [
+export const cubeVertices = [
     // Forward
     new Float32Array([
         0, 0, 0,
@@ -44,7 +43,7 @@ const cubeVertices = [
     ]),
 ];
 
-const cubeUvs = [
+export const cubeUvs = [
     // Forward
     new Float32Array([
         1, 1,
@@ -89,7 +88,7 @@ const cubeUvs = [
     ]),
 ];
 
-const cubeIndices = [
+export const cubeIndices = [
     [ 0, 1, 2, 0, 2, 3 ], // Forward
     [ 0, 2, 1, 0, 3, 2 ], // Backward
     [ 0, 2, 1, 0, 3, 2 ], // Right
@@ -98,7 +97,7 @@ const cubeIndices = [
     [ 0, 2, 1, 0, 3, 2 ], // Down
 ];
 
-const faceColors = new Float32Array([
+export const faceColors = new Float32Array([
     // Forward
     0.9,
     // Backward

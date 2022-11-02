@@ -1,12 +1,16 @@
-// TODO: Isolate general movement code for use in player and NPCs.
-const gravity = 0.5;
+import * as THREE from "../deps/three.js";
+import { gravity, isOnGround, isCollidingWithBlock, overlapsBlock } from "./physics.js";
+import { blocks, blocksById } from "./blocks.js";
+import { raycast } from "./physics.js";
+import { Follower } from "./follower.js";
+
 const mouseSensitivity = 0.002;
 const maxLookAngle = Math.PI * 0.5 * 0.99;
 
 const reach = 4;
 const scaffoldCost = 5;
 
-class Player {
+export class Player {
     constructor(x, y, z) {
         this.x = x;
         this.y = y;
@@ -32,7 +36,7 @@ class Player {
         this.money = 0;
     }
 
-    interact = (deltaTime, world, input, enemies, blockBreakProvider) => {
+    interact = (deltaTime, scene, world, input, enemies, blockBreakProvider) => {
         if (input.isMouseButtonPressed(0)) {
             let rayHit = raycast(world, this.x, this.y, this.z, this.lookX, this.lookY, this.lookZ, reach);
 
@@ -53,7 +57,7 @@ class Player {
         } else if (input.wasMouseButtonPressed(1)) {
             let rayHit = raycast(world, this.x, this.y, this.z, this.lookX, this.lookY, this.lookZ, reach);
 
-            enemies.push(new Follower(rayHit.lastX + 0.5, rayHit.lastY + 0.5, rayHit.lastZ + 0.5));
+            enemies.push(new Follower(rayHit.lastX + 0.5, rayHit.lastY + 0.5, rayHit.lastZ + 0.5, scene));
         }
     }
 
@@ -153,8 +157,8 @@ class Player {
         camera.quaternion.setFromEuler(this.angle);
     }
 
-    update = (deltaTime, world, camera, input, enemies, blockBreakProvider) => {
-        this.interact(deltaTime, world, input, enemies, blockBreakProvider);
+    update = (deltaTime, scene, world, camera, input, enemies, blockBreakProvider) => {
+        this.interact(deltaTime, scene, world, input, enemies, blockBreakProvider);
 
         if (input.wasKeyPressed("KeyF")) {
             this.isFlying = !this.isFlying;

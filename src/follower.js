@@ -1,18 +1,25 @@
+import * as THREE from "../deps/three.js";
+import { ghostMinerModel } from "./resources.js";
+import { blocks } from "./blocks.js";
+import { gravity, getBlockCollision, isOnGround, overlapsBlock } from "./physics.js";
+
 const followerStates = {
     chasing: 0,
     jumping: 1,
     mining: 2,
 };
 
-// TODO: Placeblock & IsBlockSupported (aka has another block next to it)
-// API that ensures the position is empty for scaffolding.
-class Follower {
-    constructor(x, y, z) {
+const meshYOffset = 0.1;
+const animationSpeed = 3;
+const legRangeOfMotion = Math.PI * 0.25;
+
+export class Follower {
+    constructor(x, y, z, scene) {
         this.x = x;
         this.y = y;
         this.z = z;
         this.size = 0.8;
-        this.state = followerStates.jumping;
+        this.state = followerStates.chasing;
         this.yVelocity = 0;
         this.targetBlockX = 0;
         this.targetBlockY = 0;
@@ -20,48 +27,44 @@ class Follower {
         this.newX = this.x;
         this.newY = this.y;
         this.newZ = this.z;
+        this.speed = 2;
 
-        // this.material = new THREE.ShaderMaterial({
-        //     uniforms: {
-        //         diffuse: { value: breakingTexture },
-        //         depth: { value: 2 },
-        //     },
-        //     vertexShader: breakingVs,
-        //     fragmentShader: breakingFs,
-        //     glslVersion: THREE.GLSL3,
-        // });
-        this.material = new THREE.MeshBasicMaterial();
-
-        this.mesh = new THREE.Mesh(
-            new THREE.BoxGeometry(
-                this.size,
-                this.size,
-                this.size,
-            ), this.material);
+        this.mesh = new THREE.Object3D().copy(ghostMinerModel);
+        this.leftLeg = this.mesh.getObjectByName("lLeg");
+        this.rightLeg = this.mesh.getObjectByName("rLeg");
+        this.animationProgress = 0;
 
         scene.add(this.mesh);
 
     }
 
-    updateChasing = (deltaTime, world, player) => {
+    updateChasing = (deltaTime, world, player, blockBreakProvider) => {
         let distX = player.x - this.x;
         let distZ = player.z - this.z;
 
         if (distX == 0 && distZ == 0) return;
+
+        this.mesh.rotation.y = Math.atan2(distX, distZ);
+
         let distMag = Math.sqrt(distX * distX + distZ * distZ);
         if (distMag <= 1) return;
         distX /= distMag;
         distZ /= distMag;
 
-        this.newX += distX * deltaTime;
-        this.newZ += distZ * deltaTime;
+        this.newX += distX * deltaTime * this.speed;
+        this.newZ += distZ * deltaTime * this.speed;
 
         if (player.y - this.y > 0.2) {
             this.state = followerStates.jumping;
         }
+
+        this.animationProgress += deltaTime * animationSpeed * this.speed;
+
+        this.leftLeg.rotation.x = Math.sin(this.animationProgress) * legRangeOfMotion;
+        this.rightLeg.rotation.x = Math.sin(this.animationProgress + Math.PI) * legRangeOfMotion;
     }
 
-    updateJumping = (deltaTime, world, player) => {
+    updateJumping = (deltaTime, world, player, blockBreakProvider) => {
         let grounded = isOnGround(world, this.x, this.y, this.z, this.size, this.size, this.size);
 
         if (grounded) {
@@ -73,7 +76,7 @@ class Follower {
 
             if (!overlapsBlock(this.x, this.y, this.z, this.size, this.size, this.size, blockX, lowerBlockY, blockZ) && // Follower won't get stuck inside block.
                 world.getBlock(blockX, lowerBlockY, blockZ) == blocks.air.id && // Block is currently empty.
-                world.isBlockSupported(blockX, lowerBlockY, blockZ)) {      // Block is supported.
+                world.isBlockSupported(blockX, lowerBlockY, blockZ)) {          // Block is supported.
                 world.setBlock(blockX, lowerBlockY, blockZ, blocks.wood.id);
             }
         }
@@ -83,10 +86,10 @@ class Follower {
         }
     }
 
-    updateMining = (deltaTime, world, player) => {
+    updateMining = (deltaTime, world, player, blockBreakProvider) => {
         let minedBlock = blockBreakProvider.mineBlock(world, this.targetBlockX, this.targetBlockY, this.targetBlockZ, deltaTime);
 
-        if (minedBlock != blocks.air.id) {
+        if (world.getBlock(this.targetBlockX, this.targetBlockY, this.targetBlockZ) == blocks.air.id || minedBlock != blocks.air.id) {
             this.state = followerStates.chasing;
         }
     }
@@ -98,20 +101,20 @@ class Follower {
         this.targetBlockZ = z;
     }
 
-    update = (deltaTime, world, player) => {
+    update = (deltaTime, world, player, blockBreakProvider) => {
         this.newX = this.x;
         this.newY = this.y;
         this.newZ = this.z;
 
         switch (this.state) {
             case followerStates.chasing:
-                this.updateChasing(deltaTime, world, player);
+                this.updateChasing(deltaTime, world, player, blockBreakProvider);
                 break;
             case followerStates.jumping:
-                this.updateJumping(deltaTime, world, player);
+                this.updateJumping(deltaTime, world, player, blockBreakProvider);
                 break;
             case followerStates.mining:
-                this.updateMining(deltaTime, world, player);
+                this.updateMining(deltaTime, world, player, blockBreakProvider);
                 break;
         }
 
@@ -146,13 +149,11 @@ class Follower {
         this.z = this.newZ;
 
         this.mesh.position.x = this.x;
-        this.mesh.position.y = this.y;
+        this.mesh.position.y = this.y + meshYOffset;
         this.mesh.position.z = this.z;
     }
 
     destroy = () => {
-        this.mesh.geometry.dispose();
-        this.mesh.material.dispose();
         scene.remove(this.mesh);
     }
 }

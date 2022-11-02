@@ -9,6 +9,12 @@
  * Hazards,
  */
 
+import * as THREE from "../deps/three.js";
+import { BlockBreakProvider, breakingTexCount } from "./blockBreakProvider.js";
+import { World } from "./world.js";
+import { Player } from "./player.js";
+import { Input } from "./input.js";
+
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer();
@@ -21,36 +27,7 @@ const blockTexCount = 16;
 const blockTexSpan = blockTexSize * blockTexCount;
 
 const breakingTexSize = 16;
-const breakingTexCount = 4;
 const breakingTexSpan = breakingTexSize * breakingTexCount;
-
-const vs = `
-attribute vec3 uv3;
-
-out vec3 vertUv;
-out vec3 vertColor;
-
-void main() {
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-    vertUv = uv3;
-    vertColor = color;
-}
-`;
-
-const fs = `
-precision highp float;
-precision highp sampler2DArray;
-
-uniform sampler2DArray diffuse;
-in vec3 vertUv;
-in vec3 vertColor;
-
-out vec4 outColor;
-
-void main() {
-    outColor = texture(diffuse, vertUv) * vec4(vertColor, 1.0);
-}
-`;
 
 const canvas = new OffscreenCanvas(blockTexSpan, blockTexSize);
 const ctx2D = canvas.getContext("2d");
@@ -119,7 +96,7 @@ const update = (deltaTime) => {
     blockBreakProvider.preUpdate();
 
     let oldPlayerMoney = player.money;
-    player.update(deltaTime, world, camera, input, enemies, blockBreakProvider);
+    player.update(deltaTime, scene, world, camera, input, enemies, blockBreakProvider);
     if (player.money != oldPlayerMoney) {
         moneyLabel.innerText = `$${player.money}`;
     }
@@ -129,7 +106,7 @@ const update = (deltaTime) => {
     }
 
     for (let enemy of enemies) {
-        enemy.update(deltaTime, world, player);
+        enemy.update(deltaTime, world, player, blockBreakProvider);
     }
 
     input.update();
@@ -172,25 +149,15 @@ const setup = async () => {
     const image = await imageLoader.loadAsync("res/blocks.png");
     const breakingImage = await imageLoader.loadAsync("res/breaking.png");
 
-    const texture = loadTexArray(image, blockTexCount, blockTexSize, blockTexSpan);
+    const chunkTexture = loadTexArray(image, blockTexCount, blockTexSize, blockTexSpan);
     const breakingTexture = loadTexArray(breakingImage, breakingTexCount, breakingTexSize, breakingTexSpan);
 
-    blockBreakProvider = new BlockBreakProvider(breakingTexture, 100);
-
-    material = new THREE.ShaderMaterial({
-        uniforms: {
-            diffuse: { value: texture },
-        },
-        vertexColors: true,
-        vertexShader: vs,
-        fragmentShader: fs,
-        glslVersion: THREE.GLSL3,
-    });
+    blockBreakProvider = new BlockBreakProvider(scene, breakingTexture, 100);
 
     noise.seed(seed);
 
     world = new World(16, 4);
-    world.generate(rng);
+    world.generate(rng, scene, chunkTexture);
 
     const playerSpawn = world.getPlayerSpawnPos();
     player = new Player(playerSpawn.x, playerSpawn.y, playerSpawn.z);

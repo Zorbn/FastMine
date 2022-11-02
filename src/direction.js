@@ -1,4 +1,4 @@
-const direction = {
+export const direction = {
     forward: 0,
     backward: 1,
     right: 2,
@@ -7,7 +7,7 @@ const direction = {
     down: 5,
 };
 
-const directionVecs = [
+export const directionVecs = [
     // Forward
     [0, 0, -1],
     // Backward

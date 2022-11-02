@@ -1,4 +1,4 @@
-class Input {
+export class Input {
     constructor() {
         this.pressedKeys = new Set();
         this.pressedMouseButtons = new Set();

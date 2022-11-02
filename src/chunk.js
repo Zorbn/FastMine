@@ -1,18 +1,62 @@
+import * as THREE from "../deps/three.js";
+import { blocks } from "./blocks.js";
+import { directionVecs } from "./direction.js";
+import { cubeIndices, cubeVertices, cubeUvs, faceColors } from "./cubeMesh.js";
+
 const shadeNoiseScale = 0.2;
 const caveNoiseScale = 0.1;
 
-class Chunk {
-    constructor(size, x, y, z) {
+const vs = `
+attribute vec3 uv3;
+
+out vec3 vertUv;
+out vec3 vertColor;
+
+void main() {
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    vertUv = uv3;
+    vertColor = color;
+}
+`;
+
+const fs = `
+precision highp float;
+precision highp sampler2DArray;
+
+uniform sampler2DArray diffuse;
+in vec3 vertUv;
+in vec3 vertColor;
+
+out vec4 outColor;
+
+void main() {
+    outColor = texture(diffuse, vertUv) * vec4(vertColor, 1.0);
+}
+`;
+
+export class Chunk {
+    constructor(size, x, y, z, scene, texture) {
         this.chunkX = x;
         this.chunkY = y;
         this.chunkZ = z;
         this.size = size;
         this.data = new Array(size * size * size);
         this.shadeNoise = new Array(size * size * size);
+
+        const material = new THREE.ShaderMaterial({
+            uniforms: {
+                diffuse: { value: texture },
+            },
+            vertexColors: true,
+            vertexShader: vs,
+            fragmentShader: fs,
+            glslVersion: THREE.GLSL3,
+        });
         this.mesh = new THREE.Mesh(new THREE.BufferGeometry(), material);
         this.mesh.geometry.dynamic = true;
-        this.needsUpdate = true;
         scene.add(this.mesh);
+
+        this.needsUpdate = true;
     }
 
     getBlockIndex = (x, y, z) => {

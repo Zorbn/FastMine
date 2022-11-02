@@ -1,8 +1,13 @@
+import * as THREE from "../deps/three.js";
+import { blocks, blocksById } from "./blocks.js";
+import { hashVector } from "./gameMath.js";
+
+export const breakingTexCount = 4;
 const breakingMeshSize = 1;
 const breakingMeshPaddedSize = breakingMeshSize + 0.005;
 
-class BlockBreakProvider {
-    constructor(breakingTexture, maxBreakingBlocks) {
+export class BlockBreakProvider {
+    constructor(scene, breakingTexture, maxBreakingBlocks) {
         this.breakingBlocks = new Map();
 
         const breakingVs = `
