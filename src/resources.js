@@ -15,11 +15,36 @@ objLoader.load("res/ghostMiner.obj", (obj) => {
             child.material = ghostMinerMaterial;
         }
     });
-    ghostMinerModel = obj
+    ghostMinerModel = obj;
 }, () => { }, () => { });
+
+export let ghostMinerAmbientAudioBuffer;
+export const setGhostMinerAmbientAudioBuffer = (buffer) => {
+    ghostMinerAmbientAudioBuffer = buffer;
+}
+export const createGhostMinerAmbientSound = (listener) => {
+    const ghostMinerAmbientSound = new THREE.PositionalAudio(listener);
+    ghostMinerAmbientSound.setBuffer(ghostMinerAmbientAudioBuffer);
+    ghostMinerAmbientSound.setLoop(true);
+    ghostMinerAmbientSound.setRefDistance(1);
+    ghostMinerAmbientSound.setVolume(1);
+    ghostMinerAmbientSound.play();
+    return ghostMinerAmbientSound;
+}
+
+export const audioLoader = new THREE.AudioLoader();
+export let blockBreakAudioBuffer;
+
+export const setBlockBreakAudioBuffer = (buffer) => {
+    blockBreakAudioBuffer = buffer;
+}
+
+export let blockPlaceAudioBuffer;
+
+export const setBlockPlaceAudioBuffer = (buffer) => {
+    blockPlaceAudioBuffer = buffer;
+}
 
 export const disposeResources = () => {
     ghostMinerMaterial.dispose();
 }
-
-export const audioLoader = new THREE.AudioLoader();

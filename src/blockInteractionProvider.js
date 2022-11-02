@@ -1,13 +1,14 @@
 import * as THREE from "../deps/three.js";
 import { blocks, blocksById } from "./blocks.js";
 import { hashVector } from "./gameMath.js";
+import { blockBreakAudioBuffer, blockPlaceAudioBuffer } from "./resources.js";
 
 export const breakingTexCount = 4;
 const breakingMeshSize = 1;
 const breakingMeshPaddedSize = breakingMeshSize + 0.005;
 
-export class BlockBreakProvider {
-    constructor(scene, breakingTexture, maxBreakingBlocks) {
+export class BlockInteractionProvider {
+    constructor(scene, breakingTexture, maxBreakingBlocks, listener) {
         this.breakingBlocks = new Map();
 
         const breakingVs = `
@@ -60,7 +61,27 @@ export class BlockBreakProvider {
             ), this.breakingMaterial, maxBreakingBlocks);
         this.breakingMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
 
+        this.listener = listener;
+        this.usedAudios = [];
+        this.freeAudios = [];
+
         scene.add(this.breakingMesh);
+    }
+
+    playSound = (soundBuffer, x, y, z) => {
+        let audio = this.freeAudios.pop();
+        if (audio == undefined) {
+            audio = new THREE.PositionalAudio(this.listener);
+            audio.setRefDistance(1);
+            audio.detune = Math.random() * 400;
+            audio.setVolume(4);
+        }
+        audio.setBuffer(soundBuffer);
+        audio.x = x + 0.5;
+        audio.y = y + 0.5;
+        audio.z = z + 0.5;
+        audio.play();
+        this.usedAudios.push(audio);
     }
 
     mineBlock = (world, x, y, z, deltaTime) => {
@@ -84,6 +105,7 @@ export class BlockBreakProvider {
                 y,
                 z,
             });
+
             breakingBlock = this.breakingBlocks.get(hash);
         } else {
             breakingBlock.updatedThisFrame = true;
@@ -100,10 +122,18 @@ export class BlockBreakProvider {
         if (breakingBlock.progress >= blockBeingBroken.breakTime) {
             world.setBlock(x, y, z, blocks.air.id);
             this.breakingBlocks.delete(hash);
+
+            this.playSound(blockBreakAudioBuffer, x, y, z);
+
             return breakingBlock.id;
         }
 
         return blocks.air.id;
+    }
+
+    placeBlock = (world, x, y, z, type) => {
+        world.setBlock(x, y, z, type);
+        this.playSound(blockPlaceAudioBuffer, x, y, z);
     }
 
     preUpdate = () => {
@@ -132,5 +162,13 @@ export class BlockBreakProvider {
 
         this.breakingMesh.instanceMatrix.needsUpdate = true;
         this.breakingMesh.count = breakingBlockCount;
+
+        for (let i = this.freeAudios.length - 1; i >= 0; i--) {
+            let audio = this.freeAudios[i];
+            if (!audio.isPlaying) {
+                this.freeAudios.splice(i, 1);
+                this.usedAudios.push(audio);
+            }
+        }
     }
 }

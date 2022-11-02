@@ -1,7 +1,7 @@
 import * as THREE from "../deps/three.js";
-import { ghostMinerModel } from "./resources.js";
+import { createGhostMinerAmbientSound, ghostMinerModel } from "./resources.js";
 import { blocks } from "./blocks.js";
-import { gravity, getBlockCollision, isOnGround, overlapsBlock } from "./physics.js";
+import { gravity, getBlockCollision, isOnGround, overlapsBlock, raycast } from "./physics.js";
 
 const enemyMinerStates = {
     chasing: 0,
@@ -15,10 +15,11 @@ const animationSpeed = 3;
 const legRangeOfMotion = Math.PI * 0.25;
 const attackCooldown = 0.5;
 const attackDamage = 10;
-const detectionRange = 8;
+const detectionRange = 10;
+const attackDistance = 0.8;
 
 export class EnemyMiner {
-    constructor(x, y, z, scene) {
+    constructor(x, y, z, scene, listener) {
         this.x = x;
         this.y = y;
         this.z = z;
@@ -35,12 +36,12 @@ export class EnemyMiner {
         this.attackTimer = attackCooldown;
 
         this.mesh = new THREE.Object3D().copy(ghostMinerModel);
+        this.mesh.add(createGhostMinerAmbientSound(listener));
         this.leftLeg = this.mesh.getObjectByName("lLeg");
         this.rightLeg = this.mesh.getObjectByName("rLeg");
         this.animationProgress = 0;
 
         scene.add(this.mesh);
-
     }
 
     attack = (player) => {
@@ -51,7 +52,7 @@ export class EnemyMiner {
         }
     }
 
-    updateChasing = (deltaTime, world, player, blockBreakProvider) => {
+    updateChasing = (deltaTime, world, player, blockInteractionProvider) => {
         let distX = player.x - this.x;
         let distZ = player.z - this.z;
 
@@ -61,7 +62,7 @@ export class EnemyMiner {
 
         let distMag = Math.sqrt(distX * distX + distZ * distZ);
 
-        if (distMag <= 1) {
+        if (distMag <= attackDistance) {
             this.attack(player);
             return;
         }
@@ -82,7 +83,7 @@ export class EnemyMiner {
         this.rightLeg.rotation.x = Math.sin(this.animationProgress + Math.PI) * legRangeOfMotion;
     }
 
-    updateJumping = (deltaTime, world, player, blockBreakProvider) => {
+    updateJumping = (deltaTime, world, player, blockInteractionProvider) => {
         let grounded = isOnGround(world, this.x, this.y, this.z, this.size, this.size, this.size);
 
         if (grounded) {
@@ -95,7 +96,7 @@ export class EnemyMiner {
             if (!overlapsBlock(this.x, this.y, this.z, this.size, this.size, this.size, blockX, lowerBlockY, blockZ) && // Follower won't get stuck inside block.
                 world.getBlock(blockX, lowerBlockY, blockZ) == blocks.air.id && // Block is currently empty.
                 world.isBlockSupported(blockX, lowerBlockY, blockZ)) {          // Block is supported.
-                world.setBlock(blockX, lowerBlockY, blockZ, blocks.wood.id);
+                blockInteractionProvider.placeBlock(world, blockX, lowerBlockY, blockZ, blocks.wood.id);
             }
         }
 
@@ -104,22 +105,32 @@ export class EnemyMiner {
         }
     }
 
-    updateMining = (deltaTime, world, player, blockBreakProvider) => {
-        let minedBlock = blockBreakProvider.mineBlock(world, this.targetBlockX, this.targetBlockY, this.targetBlockZ, deltaTime);
+    updateMining = (deltaTime, world, player, blockInteractionProvider) => {
+        let minedBlock = blockInteractionProvider.mineBlock(world, this.targetBlockX, this.targetBlockY, this.targetBlockZ, deltaTime);
 
         if (world.getBlock(this.targetBlockX, this.targetBlockY, this.targetBlockZ) == blocks.air.id || minedBlock != blocks.air.id) {
             this.state = enemyMinerStates.chasing;
         }
     }
 
-    updateResting = (deltaTime, world, player, blockBreakProvider) => {
+    updateResting = (deltaTime, world, player, blockInteractionProvider) => {
         let distX = player.x - this.x;
+        let distY = player.y - this.y;
         let distZ = player.z - this.z;
 
-        let distMag = Math.sqrt(distX * distX + distZ * distZ);
+        let distMag = Math.sqrt(distX * distX + distY * distY + distZ * distZ);
 
         if (distMag < detectionRange) {
-            state = enemyMinerStates.chasing;
+            if (distMag != 0) {
+                distX /= distMag;
+                distY /= distMag;
+                distZ /= distMag;
+            }
+
+            // Check if player can be seen by this enemy.
+            if (raycast(world, this.x, this.y, this.z, distX, distY, distZ, detectionRange).distance > distMag) {
+                this.state = enemyMinerStates.chasing;
+            }
         }
     }
 
@@ -130,20 +141,23 @@ export class EnemyMiner {
         this.targetBlockZ = z;
     }
 
-    update = (deltaTime, world, player, blockBreakProvider) => {
+    update = (deltaTime, world, player, blockInteractionProvider) => {
         this.newX = this.x;
         this.newY = this.y;
         this.newZ = this.z;
 
         switch (this.state) {
             case enemyMinerStates.chasing:
-                this.updateChasing(deltaTime, world, player, blockBreakProvider);
+                this.updateChasing(deltaTime, world, player, blockInteractionProvider);
                 break;
             case enemyMinerStates.jumping:
-                this.updateJumping(deltaTime, world, player, blockBreakProvider);
+                this.updateJumping(deltaTime, world, player, blockInteractionProvider);
                 break;
             case enemyMinerStates.mining:
-                this.updateMining(deltaTime, world, player, blockBreakProvider);
+                this.updateMining(deltaTime, world, player, blockInteractionProvider);
+                break;
+            case enemyMinerStates.resting:
+                this.updateResting(deltaTime, world, player, blockInteractionProvider);
                 break;
         }
 
@@ -166,13 +180,19 @@ export class EnemyMiner {
         let xCollision = getBlockCollision(world, this.newX, this.y, this.z, this.size, this.size, this.size);
         if (xCollision != null) {
             this.newX = this.x;
-            this.beginMining(xCollision.x, xCollision.y, xCollision.z);
+
+            if (this.state != enemyMinerStates.resting) {
+                this.beginMining(xCollision.x, xCollision.y, xCollision.z);
+            }
         }
 
         let zCollision = getBlockCollision(world, this.x, this.y, this.newZ, this.size, this.size, this.size);
         if (zCollision != null) {
             this.newZ = this.z;
-            this.beginMining(zCollision.x, zCollision.y, zCollision.z);
+
+            if (this.state != enemyMinerStates.resting) {
+                this.beginMining(zCollision.x, zCollision.y, zCollision.z);
+            }
         }
 
         this.x = this.newX;

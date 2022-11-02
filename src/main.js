@@ -1,17 +1,16 @@
 /*
  * FEAT:
- * Footsteps and block breaking sounds,
  * Multiple levels w/ transition between,
  * Main menu/and death screen for when player dies.
  */
 
 import * as THREE from "../deps/three.js";
-import { BlockBreakProvider, breakingTexCount } from "./blockBreakProvider.js";
+import { BlockInteractionProvider, breakingTexCount } from "./blockInteractionProvider.js";
 import { World } from "./world.js";
 import { Player } from "./player.js";
 import { Input } from "./input.js";
 import { EnemyMiner } from "./enemyMiner.js";
-import { audioLoader, ghostMinerModel } from "./resources.js";
+import { setBlockPlaceAudioBuffer, setBlockBreakAudioBuffer, audioLoader, setGhostMinerAmbientAudioBuffer } from "./resources.js";
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -57,11 +56,12 @@ const rng = sfc32(0, 0, 0, seed);
 
 let lastTime = 0;
 let totalTime = 0;
+let listener;
 let player;
 let input;
 let world;
 let enemies = [];
-let blockBreakProvider;
+let blockInteractionProvider;
 
 const loadTexArray = (image, depth, size, span) => {
     ctx2D.clearRect(0, 0, canvas.width, canvas.height);
@@ -101,24 +101,24 @@ const updateMoneyLabel = () => {
 }
 
 const update = (deltaTime) => {
-    blockBreakProvider.preUpdate();
+    blockInteractionProvider.preUpdate();
 
     let oldPlayerMoney = player.money;
     let oldPlayerHealth = player.health;
 
-    player.update(deltaTime, scene, world, camera, input, enemies, blockBreakProvider);
+    player.update(deltaTime, scene, world, camera, input, enemies, blockInteractionProvider, listener);
 
     for (let [_hash, chunk] of world.chunks) {
         chunk.update(world);
     }
 
     for (let enemy of enemies) {
-        enemy.update(deltaTime, world, player, blockBreakProvider);
+        enemy.update(deltaTime, world, player, blockInteractionProvider);
     }
 
     input.update();
 
-    blockBreakProvider.postUpdate();
+    blockInteractionProvider.postUpdate();
 
     if (player.money != oldPlayerMoney) {
         updateMoneyLabel();
@@ -165,30 +165,28 @@ const setup = async () => {
     const chunkTexture = loadTexArray(image, blockTexCount, blockTexSize, blockTexSpan);
     const breakingTexture = loadTexArray(breakingImage, breakingTexCount, breakingTexSize, breakingTexSpan);
 
-    blockBreakProvider = new BlockBreakProvider(scene, breakingTexture, 100);
+    listener = new THREE.AudioListener();
+    camera.add(listener);
 
-    input = new Input();
-    const onMouseMove = e => {
-        player.onMouseMove(e, camera);
-    }
-    const onFirstClick = () => {
-        const listener = new THREE.AudioListener();
-        camera.add(listener);
+    audioLoader.load("res/ghostMinerAmbientSound.ogg", (buffer) => {
+        setGhostMinerAmbientAudioBuffer(buffer);
+    });
 
-        const ghostMinerAmbientSound = new THREE.PositionalAudio(listener);
-        audioLoader.load("res/ghostMinerAmbientSound.ogg", (buffer) => {
-            ghostMinerAmbientSound.setBuffer(buffer);
-            ghostMinerAmbientSound.setLoop(true);
-            ghostMinerAmbientSound.setRefDistance(1);
-            ghostMinerAmbientSound.play();
-            ghostMinerModel.add(ghostMinerAmbientSound);
+    audioLoader.load("res/blockBreakSound.ogg", (buffer) => {
+        setBlockBreakAudioBuffer(buffer);
+    });
+    audioLoader.load("res/blockPlaceSound.ogg", (buffer) => {
+        setBlockPlaceAudioBuffer(buffer);
+    });
 
-            for (let enemy of enemies) {
-                enemy.mesh.add(ghostMinerAmbientSound);
-            }
-        });
-    }
-    input.addListeners(onMouseMove, onFirstClick);
+    const playerStepSound = new THREE.PositionalAudio(listener);
+    audioLoader.load("res/playerStepSound.ogg", (buffer) => {
+        playerStepSound.setBuffer(buffer);
+        playerStepSound.setRefDistance(1);
+        playerStepSound.setVolume(2);
+    });
+
+    blockInteractionProvider = new BlockInteractionProvider(scene, breakingTexture, 100, listener);
 
     noise.seed(seed);
 
@@ -198,20 +196,27 @@ const setup = async () => {
 
     const spawnPoints = world.generate(rng, scene, chunkTexture);
     const playerSpawnI = Math.floor(rng() * chunkCount);
-    const avgEnemyCount = 10;
+    const avgEnemyCount = 16;
 
     for (let i = 0; i < chunkCount; i++) {
         if (i == playerSpawnI) {
             const playerSpawn = spawnPoints[i];
-            player = new Player(playerSpawn.x, playerSpawn.y, playerSpawn.z);
+            player = new Player(playerSpawn.x, playerSpawn.y, playerSpawn.z, playerStepSound);
             continue;
         }
 
         if (rng() < avgEnemyCount / chunkCount) {
             const enemySpawn = spawnPoints[i];
-            enemies.push(new EnemyMiner(enemySpawn.x + 0.5, enemySpawn.y + 0.5, enemySpawn.z + 0.5, scene));
+            enemies.push(new EnemyMiner(enemySpawn.x, enemySpawn.y, enemySpawn.z, scene, listener));
         }
     }
+
+    input = new Input();
+    const onMouseMove = e => {
+        player.onMouseMove(e, camera);
+    }
+
+    input.addListeners(onMouseMove);
 
     updateMoneyLabel();
     updateHealthBar();
@@ -223,4 +228,8 @@ const setup = async () => {
     healthBackground.style.width = `${healthBarWidth}rem`;
 }
 
-setup();
+const onFirstClick = () => {
+    document.removeEventListener("click", onFirstClick);
+    setup();
+};
+document.addEventListener("click", onFirstClick);

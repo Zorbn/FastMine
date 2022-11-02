@@ -11,7 +11,7 @@ const reach = 4;
 const scaffoldCost = 5;
 
 export class Player {
-    constructor(x, y, z) {
+    constructor(x, y, z, stepSound) {
         this.x = x;
         this.y = y;
         this.z = z;
@@ -35,18 +35,20 @@ export class Player {
 
         this.money = 0;
         this.health = 100;
+
+        this.stepSound = stepSound;
     }
 
     damage = (amount) => {
         this.health -= amount;
     }
 
-    interact = (deltaTime, scene, world, input, enemies, blockBreakProvider) => {
+    interact = (deltaTime, scene, world, input, enemies, blockInteractionProvider, listener) => {
         if (input.isMouseButtonPressed(0)) {
             let rayHit = raycast(world, this.x, this.y, this.z, this.lookX, this.lookY, this.lookZ, reach);
 
             if (rayHit.hit) {
-                let minedBlock = blockBreakProvider.mineBlock(world, rayHit.x, rayHit.y, rayHit.z, deltaTime);
+                let minedBlock = blockInteractionProvider.mineBlock(world, rayHit.x, rayHit.y, rayHit.z, deltaTime);
 
                 if (minedBlock != blocks.air.id) {
                     this.money += blocksById.get(minedBlock).value;
@@ -57,12 +59,12 @@ export class Player {
 
             if (rayHit.hit && !overlapsBlock(this.x, this.y, this.z, this.size, this.size, this.size, rayHit.lastX, rayHit.lastY, rayHit.lastZ)) {
                 this.money -= scaffoldCost;
-                world.setBlock(rayHit.lastX, rayHit.lastY, rayHit.lastZ, blocks.metal.id);
+                blockInteractionProvider.placeBlock(world, rayHit.lastX, rayHit.lastY, rayHit.lastZ, blocks.metal.id);
             }
         } else if (input.wasMouseButtonPressed(1)) {
             let rayHit = raycast(world, this.x, this.y, this.z, this.lookX, this.lookY, this.lookZ, reach);
 
-            enemies.push(new EnemyMiner(rayHit.lastX + 0.5, rayHit.lastY + 0.5, rayHit.lastZ + 0.5, scene));
+            enemies.push(new EnemyMiner(rayHit.lastX + 0.5, rayHit.lastY + 0.5, rayHit.lastZ + 0.5, scene, listener));
         }
     }
 
@@ -152,6 +154,20 @@ export class Player {
             newY = this.y;
         }
 
+        if (this.stepSound != null && grounded) {
+            this.stepSound.x = newX;
+            this.stepSound.y = newY - 0.5;
+            this.stepSound.z = newZ;
+
+            if (this.x != newX || this.y != newY || this.z != newZ) {
+                if (!this.stepSound.isPlaying) {
+                    this.stepSound.detune = Math.random() * 400;
+                    this.stepSound.play();
+                }
+            }
+        }
+
+
         this.x = newX;
         this.y = newY;
         this.z = newZ;
@@ -160,10 +176,11 @@ export class Player {
         camera.position.y = this.y;
         camera.position.z = this.z;
         camera.quaternion.setFromEuler(this.angle);
+
     }
 
-    update = (deltaTime, scene, world, camera, input, enemies, blockBreakProvider) => {
-        this.interact(deltaTime, scene, world, input, enemies, blockBreakProvider);
+    update = (deltaTime, scene, world, camera, input, enemies, blockInteractionProvider, listener) => {
+        this.interact(deltaTime, scene, world, input, enemies, blockInteractionProvider, listener);
 
         if (input.wasKeyPressed("KeyF")) {
             this.isFlying = !this.isFlying;
