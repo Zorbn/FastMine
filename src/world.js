@@ -68,11 +68,7 @@ export class World {
             this.getBlock(x, y, z - 1) != blocks.air.id;
     }
 
-    getPlayerSpawnPos = () => {
-        const spawnChunkX = this.mapSizeInChunks - 1;
-        const spawnChunkY = this.mapSizeInChunks - 1;
-        const spawnChunkZ = this.mapSizeInChunks - 1;
-
+    getSpawnPos = (spawnChunkX, spawnChunkY, spawnChunkZ) => {
         const spawnChunkWorldX = spawnChunkX * this.chunkSize;
         const spawnChunkWorldY = spawnChunkY * this.chunkSize;
         const spawnChunkWorldZ = spawnChunkZ * this.chunkSize;
@@ -104,12 +100,17 @@ export class World {
     }
 
     generate = (rng, scene, texture) => {
+        let spawnPoints = [];
+
         for (let x = 0; x < this.mapSizeInChunks; x++)
         for (let y = 0; y < this.mapSizeInChunks; y++)
         for (let z = 0; z < this.mapSizeInChunks; z++) {
             let newChunk = new Chunk(this.chunkSize, x, y, z, scene, texture);
             newChunk.generate(rng, this.mapSize);
             this.setChunk(x, y, z, newChunk);
+            spawnPoints.push(this.getSpawnPos(x, y, z));
         }
+
+        return spawnPoints;
     }
 }

@@ -21,3 +21,5 @@ objLoader.load("res/ghostMiner.obj", (obj) => {
 export const disposeResources = () => {
     ghostMinerMaterial.dispose();
 }
+
+export const audioLoader = new THREE.AudioLoader();

@@ -7,6 +7,7 @@ const enemyMinerStates = {
     chasing: 0,
     jumping: 1,
     mining: 2,
+    resting: 3,
 };
 
 const meshYOffset = 0.1;
@@ -14,6 +15,7 @@ const animationSpeed = 3;
 const legRangeOfMotion = Math.PI * 0.25;
 const attackCooldown = 0.5;
 const attackDamage = 10;
+const detectionRange = 8;
 
 export class EnemyMiner {
     constructor(x, y, z, scene) {
@@ -21,7 +23,7 @@ export class EnemyMiner {
         this.y = y;
         this.z = z;
         this.size = 0.8;
-        this.state = enemyMinerStates.chasing;
+        this.state = enemyMinerStates.resting;
         this.yVelocity = 0;
         this.targetBlockX = 0;
         this.targetBlockY = 0;
@@ -107,6 +109,17 @@ export class EnemyMiner {
 
         if (world.getBlock(this.targetBlockX, this.targetBlockY, this.targetBlockZ) == blocks.air.id || minedBlock != blocks.air.id) {
             this.state = enemyMinerStates.chasing;
+        }
+    }
+
+    updateResting = (deltaTime, world, player, blockBreakProvider) => {
+        let distX = player.x - this.x;
+        let distZ = player.z - this.z;
+
+        let distMag = Math.sqrt(distX * distX + distZ * distZ);
+
+        if (distMag < detectionRange) {
+            state = enemyMinerStates.chasing;
         }
     }
 

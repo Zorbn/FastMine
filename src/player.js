@@ -39,7 +39,6 @@ export class Player {
 
     damage = (amount) => {
         this.health -= amount;
-        console.log(this.health);
     }
 
     interact = (deltaTime, scene, world, input, enemies, blockBreakProvider) => {

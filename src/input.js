@@ -4,6 +4,7 @@ export class Input {
         this.pressedMouseButtons = new Set();
         this.keyWasPressed = new Set();
         this.mouseButtonWasPressed = new Set();
+        this.firstClick = true;
     }
 
     isKeyPressed = (key) => {
@@ -27,7 +28,7 @@ export class Input {
         this.mouseButtonWasPressed.clear();
     }
 
-    addListeners = (onMouseMove) => {
+    addListeners = (onMouseMove, onFirstClick) => {
         document.addEventListener("click", () => {
             document.body.requestPointerLock({
                 // Get raw mouse input. This prevents
@@ -36,6 +37,12 @@ export class Input {
                 // settings.
                 unadjustedMovement: true,
             });
+
+            if (this.firstClick) {
+                onFirstClick();
+            }
+
+            this.firstClick = false;
         });
 
         document.addEventListener("pointerlockchange", () => {

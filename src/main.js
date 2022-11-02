@@ -1,7 +1,6 @@
 /*
  * FEAT:
- * Enemy spawning,
- * Sound,
+ * Footsteps and block breaking sounds,
  * Multiple levels w/ transition between,
  * Main menu/and death screen for when player dies.
  */
@@ -11,6 +10,8 @@ import { BlockBreakProvider, breakingTexCount } from "./blockBreakProvider.js";
 import { World } from "./world.js";
 import { Player } from "./player.js";
 import { Input } from "./input.js";
+import { EnemyMiner } from "./enemyMiner.js";
+import { audioLoader, ghostMinerModel } from "./resources.js";
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -166,19 +167,51 @@ const setup = async () => {
 
     blockBreakProvider = new BlockBreakProvider(scene, breakingTexture, 100);
 
-    noise.seed(seed);
-
-    world = new World(16, 4);
-    world.generate(rng, scene, chunkTexture);
-
-    const playerSpawn = world.getPlayerSpawnPos();
-    player = new Player(playerSpawn.x, playerSpawn.y, playerSpawn.z);
-
     input = new Input();
     const onMouseMove = e => {
         player.onMouseMove(e, camera);
     }
-    input.addListeners(onMouseMove);
+    const onFirstClick = () => {
+        const listener = new THREE.AudioListener();
+        camera.add(listener);
+
+        const ghostMinerAmbientSound = new THREE.PositionalAudio(listener);
+        audioLoader.load("res/ghostMinerAmbientSound.ogg", (buffer) => {
+            ghostMinerAmbientSound.setBuffer(buffer);
+            ghostMinerAmbientSound.setLoop(true);
+            ghostMinerAmbientSound.setRefDistance(1);
+            ghostMinerAmbientSound.play();
+            ghostMinerModel.add(ghostMinerAmbientSound);
+
+            for (let enemy of enemies) {
+                enemy.mesh.add(ghostMinerAmbientSound);
+            }
+        });
+    }
+    input.addListeners(onMouseMove, onFirstClick);
+
+    noise.seed(seed);
+
+    const mapSizeInChunks = 4;
+    const chunkCount = mapSizeInChunks * mapSizeInChunks * mapSizeInChunks;
+    world = new World(16, mapSizeInChunks);
+
+    const spawnPoints = world.generate(rng, scene, chunkTexture);
+    const playerSpawnI = Math.floor(rng() * chunkCount);
+    const avgEnemyCount = 10;
+
+    for (let i = 0; i < chunkCount; i++) {
+        if (i == playerSpawnI) {
+            const playerSpawn = spawnPoints[i];
+            player = new Player(playerSpawn.x, playerSpawn.y, playerSpawn.z);
+            continue;
+        }
+
+        if (rng() < avgEnemyCount / chunkCount) {
+            const enemySpawn = spawnPoints[i];
+            enemies.push(new EnemyMiner(enemySpawn.x + 0.5, enemySpawn.y + 0.5, enemySpawn.z + 0.5, scene));
+        }
+    }
 
     updateMoneyLabel();
     updateHealthBar();
