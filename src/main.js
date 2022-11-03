@@ -226,6 +226,10 @@ const setup = async () => {
     const hud = document.getElementById("hud");
     hud.style.display = "flex";
     healthBackground.style.width = `${healthBarWidth}rem`;
+
+    const menu = document.getElementById("menu");
+    menu.style.display = "none";
+    healthBackground.style.width = `${healthBarWidth}rem`;
 }
 
 const onFirstClick = () => {

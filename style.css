@@ -1,5 +1,26 @@
 body {
     margin: 0;
+    background-color: black;
+    overflow: hidden;
+}
+
+#title {
+    background-color: transparent;
+    z-index: 1;
+    margin-top: 6rem;
+    image-rendering: pixelated;
+    width: 50%;
+}
+
+#menu {
+    display: flex;
+    justify-content: center;
+}
+
+#background {
+    position: absolute;
+    width: 100vw;
+    height: 100vh;
 }
 
 #hud {
