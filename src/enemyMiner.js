@@ -36,7 +36,8 @@ export class EnemyMiner {
         this.attackTimer = attackCooldown;
 
         this.mesh = new THREE.Object3D().copy(ghostMinerModel);
-        this.mesh.add(createGhostMinerAmbientSound(listener));
+        this.audio = createGhostMinerAmbientSound(listener);
+        this.mesh.add(this.audio);
         this.mesh.rotation.y = Math.random() * Math.PI * 2;
         this.leftLeg = this.mesh.getObjectByName("lLeg");
         this.rightLeg = this.mesh.getObjectByName("rLeg");
@@ -206,6 +207,7 @@ export class EnemyMiner {
     }
 
     destroy = (scene) => {
+        this.audio.stop();
         scene.remove(this.mesh);
     }
 }

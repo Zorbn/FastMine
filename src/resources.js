@@ -3,10 +3,16 @@ import { OBJLoader } from "../deps/OBJLoader.js";
 import { breakingTexCount } from "./blockInteractionProvider.js";
 
 export const textureLoader = new THREE.TextureLoader();
-export const ghostMinerTexture = textureLoader.load("res/ghostMinerTexture.png");
+
+const ghostMinerTexture = textureLoader.load("res/ghostMinerTexture.png");
 ghostMinerTexture.magFilter = THREE.NearestFilter;
 ghostMinerTexture.minFilter = THREE.NearestFilter;
 const ghostMinerMaterial = new THREE.MeshBasicMaterial({ map: ghostMinerTexture });
+
+const hatchTexture = textureLoader.load("res/hatchTexture.png");
+hatchTexture.magFilter = THREE.NearestFilter;
+hatchTexture.minFilter = THREE.NearestFilter;
+const hatchMaterial = new THREE.MeshBasicMaterial({ map: hatchTexture, color: 0xbbbbbb });
 
 export const objLoader = new OBJLoader();
 export let ghostMinerModel;
@@ -18,6 +24,17 @@ objLoader.load("res/ghostMiner.obj", (obj) => {
     });
     ghostMinerModel = obj;
 }, () => { }, () => { });
+
+export let hatchModel;
+objLoader.load("res/hatch.obj", (obj) => {
+    obj.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+            child.material = hatchMaterial;
+        }
+    });
+    hatchModel = obj;
+}, () => { }, () => { });
+
 
 const blockTexSize = 16;
 const blockTexCount = 16;

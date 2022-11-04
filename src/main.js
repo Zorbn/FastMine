@@ -1,6 +1,7 @@
 /*
  * FEAT:
- * Multiple levels w/ transition between,
+ * Radar for hatch.
+ * Move between levels when clicking hatch.
  */
 
 import * as THREE from "../deps/three.js";
@@ -10,6 +11,9 @@ import { Player } from "./player.js";
 import { Input } from "./input.js";
 import { EnemyMiner } from "./enemyMiner.js";
 import { loadResources, chunkTexture } from "./resources.js";
+import { Hatch } from "./hatch.js";
+import { indexTo3D } from "./gameMath.js";
+import { blocks } from "./blocks.js";
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -53,6 +57,7 @@ let lastTime = 0;
 let totalTime = 0;
 let listener;
 let player;
+let hatch;
 let input;
 let world;
 let enemies = [];
@@ -143,27 +148,33 @@ const initMap = () => {
     world.generate(rng, scene, chunkTexture);
 
     const playerSpawnI = Math.floor(rng() * chunkCount);
-    const playerSpawnX = playerSpawnI % mapSizeInChunks;
-    const playerSpawnY = Math.floor(playerSpawnI / mapSizeInChunks) % mapSizeInChunks;
-    const playerSpawnZ = Math.floor(playerSpawnI / (mapSizeInChunks * mapSizeInChunks));
-    const playerSpawn = world.getSpawnPos(playerSpawnX, playerSpawnY, playerSpawnZ, true);
+    const playerSpawnChunk = indexTo3D(playerSpawnI, mapSizeInChunks);
+    const playerSpawn = world.getSpawnPos(playerSpawnChunk.x, playerSpawnChunk.y, playerSpawnChunk.z, true);
+
+    const hatchSpawnI = Math.floor(rng() * chunkCount);
+    const hatchSpawnChunk = indexTo3D(hatchSpawnI, mapSizeInChunks);
+    const hatchSpawn = world.getSpawnPos(hatchSpawnChunk.x, hatchSpawnChunk.y, hatchSpawnChunk.z, true);
 
     const avgEnemyCount = 32;
     const minEnemyDistance = 8;
 
     player = new Player(playerSpawn.x, playerSpawn.y, playerSpawn.z);
 
-    for (let i = 0; i < chunkCount; i++) {
-        let x = i % mapSizeInChunks;
-        let y = Math.floor(i / mapSizeInChunks) % mapSizeInChunks;
-        let z = Math.floor(i / (mapSizeInChunks * mapSizeInChunks));
+    while (world.getBlock(hatchSpawn.x, hatchSpawn.y - 1, hatchSpawn.z) == blocks.air.id) {
+        hatchSpawn.y--;
+    }
 
-        if (i == playerSpawnI) {
+    hatch = new Hatch(hatchSpawn.x, hatchSpawn.y, hatchSpawn.z, scene);
+
+    for (let i = 0; i < chunkCount; i++) {
+        const chunkPos = indexTo3D(i, mapSizeInChunks);
+
+        if (i == playerSpawnI || i == hatchSpawnI) {
             continue;
         }
 
         if (rng() < (avgEnemyCount - enemies.length) / avgEnemyCount) {
-            const enemySpawn = world.getSpawnPos(x, y, z, false);
+            const enemySpawn = world.getSpawnPos(chunkPos.x, chunkPos.y, chunkPos.z, false);
 
             let distX = player.x - enemySpawn.x;
             let distY = player.y - enemySpawn.y;
@@ -195,6 +206,8 @@ const destroyMap = () => {
     while (enemies.length > 0) {
         enemies.pop().destroy(scene);
     }
+
+    hatch.destroy();
 
     input.removeListeners();
 }

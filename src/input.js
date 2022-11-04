@@ -86,6 +86,11 @@ export class Input {
         document.removeEventListener("keyup", this.keyUpListener);
         document.removeEventListener("mousedown", this.mouseDownListener)
         document.removeEventListener("mouseup", this.mouseUpListener);
+
+        this.pressedKeys.clear();
+        this.pressedMouseButtons.clear();
+        this.keyWasPressed.clear();
+        this.mouseButtonWasPressed.clear();
     }
 
     unlockPointer = () => {
