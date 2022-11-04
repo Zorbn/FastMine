@@ -28,7 +28,7 @@ export class Input {
     }
 
     addListeners = (onMouseMove) => {
-        document.addEventListener("click", () => {
+        this.clickListener = () => {
             document.body.requestPointerLock({
                 // Get raw mouse input. This prevents
                 // occasional mouse snapping, and keeps
@@ -36,9 +36,10 @@ export class Input {
                 // settings.
                 unadjustedMovement: true,
             });
-        });
+        }
+        document.addEventListener("click", this.clickListener);
 
-        document.addEventListener("pointerlockchange", () => {
+        this.pointerLockChangeListener = () => {
             if (document.pointerLockElement == document.body) {
                 document.addEventListener("mousemove", onMouseMove);
             } else {
@@ -46,29 +47,45 @@ export class Input {
                 this.pressedKeys.clear();
                 this.pressedMouseButtons.clear();
             }
-        });
+        }
+        document.addEventListener("pointerlockchange", this.pointerLockChangeListener);
 
-        document.addEventListener("keydown", (event) => {
+        this.keyDownListener = (event) => {
             if (!this.pressedKeys.has(event.code)) {
                 this.keyWasPressed.add(event.code);
             }
 
             this.pressedKeys.add(event.code);
-        })
-        document.addEventListener("keyup", (event) => {
-            this.pressedKeys.delete(event.code);
-        })
+        }
+        document.addEventListener("keydown", this.keyDownListener);
 
-        document.addEventListener("mousedown", (event) => {
+        this.keyUpListener = (event) => {
+            this.pressedKeys.delete(event.code);
+        }
+        document.addEventListener("keyup", this.keyUpListener);
+
+        this.mouseDownListener = (event) => {
             if (!this.pressedMouseButtons.has(event.button)) {
                 this.mouseButtonWasPressed.add(event.button);
             }
 
             this.pressedMouseButtons.add(event.button);
-        })
-        document.addEventListener("mouseup", (event) => {
+        }
+        document.addEventListener("mousedown", this.mouseDownListener)
+
+        this.mouseUpListener = (event) => {
             this.pressedMouseButtons.delete(event.button);
-        })
+        };
+        document.addEventListener("mouseup", this.mouseUpListener);
+    }
+
+    removeListeners = () => {
+        document.removeEventListener("click", this.clickListener);
+        document.removeEventListener("pointerlockchange", this.pointerLockChangeListener);
+        document.removeEventListener("keydown", this.keyDownListener);
+        document.removeEventListener("keyup", this.keyUpListener);
+        document.removeEventListener("mousedown", this.mouseDownListener)
+        document.removeEventListener("mouseup", this.mouseUpListener);
     }
 
     unlockPointer = () => {

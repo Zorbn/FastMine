@@ -70,6 +70,7 @@ export class Player {
     }
 
     move = (deltaTime, world, camera, input) => {
+        this.health -= deltaTime * 5;
         let isSneaking = input.isKeyPressed("ShiftLeft");
         let grounded = isOnGround(world, this.x, this.y, this.z, this.size, this.size, this.size);
 

@@ -4,21 +4,35 @@ body {
     overflow: hidden;
 }
 
+span {
+    font-family: "Fira Mono", monospace;
+}
+
+#menu {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+}
+
 #title {
-    background-color: transparent;
     z-index: 1;
     margin-top: 6rem;
     image-rendering: pixelated;
     width: 50%;
 }
 
-#menu {
-    display: flex;
-    justify-content: center;
+#start-prompt {
+    z-index: 1;
+    color: white;
+    margin-top: 12rem;
+    font-size: 2rem;
 }
 
 #background {
     position: absolute;
+    top: 0;
+    left: 0;
     width: 100vw;
     height: 100vh;
 }
@@ -45,7 +59,6 @@ body {
 
 #money {
     padding: 1%;
-    font-family: "Fira Mono", monospace;
     font-size: 1.5rem;
 }
 

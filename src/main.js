@@ -177,7 +177,6 @@ const initMap = () => {
         }
     }
 
-    input = new Input();
     const onMouseMove = e => {
         player.onMouseMove(e, camera);
     }
@@ -186,8 +185,6 @@ const initMap = () => {
 
     updateMoneyLabel();
     updateHealthBar();
-
-    setMenuEnabled(false);
 
     healthBackground.style.width = `${healthBarWidth}rem`;
 }
@@ -198,6 +195,8 @@ const destroyMap = () => {
     while (enemies.length > 0) {
         enemies.pop().destroy(scene);
     }
+
+    input.removeListeners();
 }
 
 const setup = async () => {
@@ -216,6 +215,8 @@ const setup = async () => {
 
     onResize();
 
+    input = new Input();
+
     listener = new THREE.AudioListener();
     camera.add(listener);
     await loadResources(listener);
@@ -229,6 +230,7 @@ const onClick = () => {
     state = gameStates.inGame;
     initMap();
     draw();
+    setMenuEnabled(false);
 }
 const onFirstClick = async () => {
     document.removeEventListener("click", onFirstClick);
