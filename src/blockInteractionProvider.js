@@ -2,13 +2,14 @@ import * as THREE from "../deps/three.js";
 import { blocks, blocksById } from "./blocks.js";
 import { hashVector } from "./gameMath.js";
 import { blockBreakAudioBuffer, blockPlaceAudioBuffer } from "./resources.js";
+import { breakingTexture } from "./resources.js";
 
 export const breakingTexCount = 4;
 const breakingMeshSize = 1;
 const breakingMeshPaddedSize = breakingMeshSize + 0.005;
 
 export class BlockInteractionProvider {
-    constructor(scene, breakingTexture, maxBreakingBlocks, listener) {
+    constructor(scene, maxBreakingBlocks, listener) {
         this.breakingBlocks = new Map();
 
         const breakingVs = `

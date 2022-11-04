@@ -70,4 +70,8 @@ export class Input {
             this.pressedMouseButtons.delete(event.button);
         })
     }
+
+    unlockPointer = () => {
+        document.exitPointerLock();
+    }
 }

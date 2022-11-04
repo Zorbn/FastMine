@@ -32,11 +32,12 @@ export class EnemyMiner {
         this.newX = this.x;
         this.newY = this.y;
         this.newZ = this.z;
-        this.speed = 2;
+        this.speed = 4;
         this.attackTimer = attackCooldown;
 
         this.mesh = new THREE.Object3D().copy(ghostMinerModel);
         this.mesh.add(createGhostMinerAmbientSound(listener));
+        this.mesh.rotation.y = Math.random() * Math.PI * 2;
         this.leftLeg = this.mesh.getObjectByName("lLeg");
         this.rightLeg = this.mesh.getObjectByName("rLeg");
         this.animationProgress = 0;
@@ -204,7 +205,7 @@ export class EnemyMiner {
         this.mesh.position.z = this.z;
     }
 
-    destroy = () => {
+    destroy = (scene) => {
         scene.remove(this.mesh);
     }
 }

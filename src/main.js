@@ -1,36 +1,30 @@
 /*
  * FEAT:
  * Multiple levels w/ transition between,
- * Main menu/and death screen for when player dies.
  */
 
 import * as THREE from "../deps/three.js";
-import { BlockInteractionProvider, breakingTexCount } from "./blockInteractionProvider.js";
+import { BlockInteractionProvider } from "./blockInteractionProvider.js";
 import { World } from "./world.js";
 import { Player } from "./player.js";
 import { Input } from "./input.js";
 import { EnemyMiner } from "./enemyMiner.js";
-import { setBlockPlaceAudioBuffer, setBlockBreakAudioBuffer, audioLoader, setGhostMinerAmbientAudioBuffer } from "./resources.js";
+import { loadResources, chunkTexture } from "./resources.js";
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer();
 const moneyLabel = document.getElementById("money");
+const hud = document.getElementById("hud");
+const menu = document.getElementById("menu");
 const healthImage = document.getElementById("health");
 const healthBackground = document.getElementById("health-background");
 const healthBarWidth = 10;
 
-const texComponents = 4; // RGBA
-
-const blockTexSize = 16;
-const blockTexCount = 16;
-const blockTexSpan = blockTexSize * blockTexCount;
-
-const breakingTexSize = 16;
-const breakingTexSpan = breakingTexSize * breakingTexCount;
-
-const canvas = new OffscreenCanvas(blockTexSpan, blockTexSize);
-const ctx2D = canvas.getContext("2d");
+const gameStates = {
+    menu: 0,
+    inGame: 1,
+};
 
 // Create a random number generator using the "Simple Fast Counter"
 // algorithm. Uses a 128bit seed provided in 4 parts (a, b, c, d).
@@ -51,6 +45,7 @@ const sfc32 = (a, b, c, d) => {
 }
 
 // Noise.seed() function only supports 65535 seed values.
+// Used for gameplay related rng, visual-only rng uses standard Math.random().
 const seed = Math.random() * 65536;
 const rng = sfc32(0, 0, 0, seed);
 
@@ -62,34 +57,7 @@ let input;
 let world;
 let enemies = [];
 let blockInteractionProvider;
-
-const loadTexArray = (image, depth, size, span) => {
-    ctx2D.clearRect(0, 0, canvas.width, canvas.height);
-    ctx2D.drawImage(image, 0, 0);
-    const tex = ctx2D.getImageData(0, 0, span, size);
-
-    const texData = new Uint8Array(texComponents * span * size);
-
-    // The loaded texture is layed out in rows of the full texture.
-    // Convert it to be stored in rows of each individual textured.
-    let i = 0;
-    for (let z = 0; z < depth; z++)
-    for (let y = 0; y < size; y++)
-    for (let x = 0; x < size; x++) {
-        const pixelI = ((x + z * size) + y * span) * texComponents;
-        texData[i] = tex.data[pixelI];
-        texData[i + 1] = tex.data[pixelI + 1];
-        texData[i + 2] = tex.data[pixelI + 2];
-        texData[i + 3] = tex.data[pixelI + 3];
-
-        i += texComponents;
-    }
-
-    const texture = new THREE.DataArrayTexture(texData, size, size, depth);
-    texture.needsUpdate = true;
-
-    return texture;
-}
+let state = gameStates.menu;
 
 const updateHealthBar = () => {
     let newWidth = player.health * 0.01 * healthBarWidth;
@@ -124,12 +92,23 @@ const update = (deltaTime) => {
         updateMoneyLabel();
     }
     if (player.health != oldPlayerHealth) {
+        if (player.health <= 0) {
+            input.unlockPointer();
+            setMenuEnabled(true);
+            state = gameStates.menu;
+        }
+
         updateHealthBar();
     }
 }
 
 const draw = (time) => {
-    requestAnimationFrame(draw);
+    if (state == gameStates.inGame) {
+        requestAnimationFrame(draw);
+    } else {
+        destroyMap();
+        return;
+    }
 
     const deltaTime = (time - lastTime) * 0.001;
     lastTime = time;
@@ -145,69 +124,56 @@ const draw = (time) => {
     renderer.render(scene, camera);
 }
 
-const setup = async () => {
-    const bgColor = 0x492514;
-    scene.background = new THREE.Color(bgColor);
+const setMenuEnabled = (enabled) => {
+    if (enabled) {
+        hud.style.display = "none";
+        menu.style.display = "flex";
+    } else {
+        hud.style.display = "flex";
+        menu.style.display = "none";
+    }
+}
 
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    document.body.appendChild(renderer.domElement);
-
-    window.addEventListener("resize", () => {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-    });
-
-    const imageLoader = new THREE.ImageLoader();
-    const image = await imageLoader.loadAsync("res/blocks.png");
-    const breakingImage = await imageLoader.loadAsync("res/breaking.png");
-
-    const chunkTexture = loadTexArray(image, blockTexCount, blockTexSize, blockTexSpan);
-    const breakingTexture = loadTexArray(breakingImage, breakingTexCount, breakingTexSize, breakingTexSpan);
-
-    listener = new THREE.AudioListener();
-    camera.add(listener);
-
-    audioLoader.load("res/ghostMinerAmbientSound.ogg", (buffer) => {
-        setGhostMinerAmbientAudioBuffer(buffer);
-    });
-
-    audioLoader.load("res/blockBreakSound.ogg", (buffer) => {
-        setBlockBreakAudioBuffer(buffer);
-    });
-    audioLoader.load("res/blockPlaceSound.ogg", (buffer) => {
-        setBlockPlaceAudioBuffer(buffer);
-    });
-
-    const playerStepSound = new THREE.PositionalAudio(listener);
-    audioLoader.load("res/playerStepSound.ogg", (buffer) => {
-        playerStepSound.setBuffer(buffer);
-        playerStepSound.setRefDistance(1);
-        playerStepSound.setVolume(2);
-    });
-
-    blockInteractionProvider = new BlockInteractionProvider(scene, breakingTexture, 100, listener);
-
+const initMap = () => {
     noise.seed(seed);
 
     const mapSizeInChunks = 4;
     const chunkCount = mapSizeInChunks * mapSizeInChunks * mapSizeInChunks;
     world = new World(16, mapSizeInChunks);
+    world.generate(rng, scene, chunkTexture);
 
-    const spawnPoints = world.generate(rng, scene, chunkTexture);
     const playerSpawnI = Math.floor(rng() * chunkCount);
-    const avgEnemyCount = 16;
+    const playerSpawnX = playerSpawnI % mapSizeInChunks;
+    const playerSpawnY = Math.floor(playerSpawnI / mapSizeInChunks) % mapSizeInChunks;
+    const playerSpawnZ = Math.floor(playerSpawnI / (mapSizeInChunks * mapSizeInChunks));
+    const playerSpawn = world.getSpawnPos(playerSpawnX, playerSpawnY, playerSpawnZ, true);
+
+    const avgEnemyCount = 32;
+    const minEnemyDistance = 8;
+
+    player = new Player(playerSpawn.x, playerSpawn.y, playerSpawn.z);
 
     for (let i = 0; i < chunkCount; i++) {
+        let x = i % mapSizeInChunks;
+        let y = Math.floor(i / mapSizeInChunks) % mapSizeInChunks;
+        let z = Math.floor(i / (mapSizeInChunks * mapSizeInChunks));
+
         if (i == playerSpawnI) {
-            const playerSpawn = spawnPoints[i];
-            player = new Player(playerSpawn.x, playerSpawn.y, playerSpawn.z, playerStepSound);
             continue;
         }
 
-        if (rng() < avgEnemyCount / chunkCount) {
-            const enemySpawn = spawnPoints[i];
-            enemies.push(new EnemyMiner(enemySpawn.x, enemySpawn.y, enemySpawn.z, scene, listener));
+        if (rng() < (avgEnemyCount - enemies.length) / avgEnemyCount) {
+            const enemySpawn = world.getSpawnPos(x, y, z, false);
+
+            let distX = player.x - enemySpawn.x;
+            let distY = player.y - enemySpawn.y;
+            let distZ = player.z - enemySpawn.z;
+
+            let distMag = Math.sqrt(distX * distX + distY * distY + distZ * distZ);
+
+            if (distMag >= minEnemyDistance && enemySpawn.succeeded) {
+                enemies.push(new EnemyMiner(enemySpawn.x, enemySpawn.y, enemySpawn.z, scene, listener));
+            }
         }
     }
 
@@ -221,19 +187,53 @@ const setup = async () => {
     updateMoneyLabel();
     updateHealthBar();
 
-    draw();
+    setMenuEnabled(false);
 
-    const hud = document.getElementById("hud");
-    hud.style.display = "flex";
-    healthBackground.style.width = `${healthBarWidth}rem`;
-
-    const menu = document.getElementById("menu");
-    menu.style.display = "none";
     healthBackground.style.width = `${healthBarWidth}rem`;
 }
 
-const onFirstClick = () => {
+const destroyMap = () => {
+    world.destroy(scene);
+
+    while (enemies.length > 0) {
+        enemies.pop().destroy(scene);
+    }
+}
+
+const setup = async () => {
+    const bgColor = 0x492514;
+    scene.background = new THREE.Color(bgColor);
+
+    document.body.appendChild(renderer.domElement);
+
+    const onResize = () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    window.addEventListener("resize", onResize);
+
+    onResize();
+
+    listener = new THREE.AudioListener();
+    camera.add(listener);
+    await loadResources(listener);
+
+    blockInteractionProvider = new BlockInteractionProvider(scene, 100, listener);
+}
+
+const onClick = () => {
+    if (state != gameStates.menu) return;
+
+    state = gameStates.inGame;
+    initMap();
+    draw();
+}
+const onFirstClick = async () => {
     document.removeEventListener("click", onFirstClick);
-    setup();
+    document.addEventListener("click", onClick);
+    await setup();
+    onClick();
 };
 document.addEventListener("click", onFirstClick);

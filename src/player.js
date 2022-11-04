@@ -3,6 +3,7 @@ import { gravity, isOnGround, isCollidingWithBlock, overlapsBlock } from "./phys
 import { blocks, blocksById } from "./blocks.js";
 import { raycast } from "./physics.js";
 import { EnemyMiner } from "./enemyMiner.js";
+import { playerStepSound } from "./resources.js";
 
 const mouseSensitivity = 0.002;
 const maxLookAngle = Math.PI * 0.5 * 0.99;
@@ -11,7 +12,7 @@ const reach = 4;
 const scaffoldCost = 5;
 
 export class Player {
-    constructor(x, y, z, stepSound) {
+    constructor(x, y, z) {
         this.x = x;
         this.y = y;
         this.z = z;
@@ -36,7 +37,7 @@ export class Player {
         this.money = 0;
         this.health = 100;
 
-        this.stepSound = stepSound;
+        this.stepSound = playerStepSound;
     }
 
     damage = (amount) => {

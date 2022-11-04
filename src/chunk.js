@@ -192,7 +192,7 @@ export class Chunk {
         }
     }
 
-    destroy = () => {
+    destroy = (scene) => {
         this.mesh.geometry.dispose();
         this.mesh.material.dispose();
         scene.remove(this.mesh);
