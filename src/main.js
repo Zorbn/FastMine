@@ -1,6 +1,5 @@
 /*
  * FEAT:
- * Radar for hatch.
  * Move between levels when clicking hatch.
  */
 
@@ -14,6 +13,7 @@ import { loadResources, chunkTexture } from "./resources.js";
 import { Hatch } from "./hatch.js";
 import { indexTo3D } from "./gameMath.js";
 import { blocks } from "./blocks.js";
+import { Radar } from "./radar.js";
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -63,6 +63,7 @@ let world;
 let enemies = [];
 let blockInteractionProvider;
 let state = gameStates.menu;
+let radar;
 
 const updateHealthBar = () => {
     let newWidth = player.health * 0.01 * healthBarWidth;
@@ -88,6 +89,8 @@ const update = (deltaTime) => {
     for (let enemy of enemies) {
         enemy.update(deltaTime, world, player, blockInteractionProvider);
     }
+
+    hatch.update();
 
     input.update();
 
@@ -125,6 +128,8 @@ const draw = (time) => {
     totalTime += deltaTime;
 
     update(deltaTime);
+
+    radar.draw(player, hatch, enemies);
 
     renderer.render(scene, camera);
 }
@@ -233,6 +238,8 @@ const setup = async () => {
     listener = new THREE.AudioListener();
     camera.add(listener);
     await loadResources(listener);
+
+    radar = new Radar();
 
     blockInteractionProvider = new BlockInteractionProvider(scene, 100, listener);
 }

@@ -75,9 +75,9 @@ export class World {
 
         const spawnChunk = this.getChunk(spawnChunkX, spawnChunkY, spawnChunkZ);
 
-        for (let x = 0; x < this.chunkSize; x++)
+        for (let z = 0; z < this.chunkSize; z++)
         for (let y = 0; y < this.chunkSize; y++)
-        for (let z = 0; z < this.chunkSize; z++) {
+        for (let x = 0; x < this.chunkSize; x++) {
             if (spawnChunk.getBlock(x, y, z) != blocks.air.id) continue;
 
             return {

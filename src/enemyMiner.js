@@ -56,24 +56,30 @@ export class EnemyMiner {
 
     updateChasing = (deltaTime, world, player, blockInteractionProvider) => {
         let distX = player.x - this.x;
+        let distY = player.y - this.y;
         let distZ = player.z - this.z;
 
-        if (distX == 0 && distZ == 0) return;
+        let distMag = Math.sqrt(distX * distX + distY * distY + distZ * distZ);
 
-        this.mesh.rotation.y = Math.atan2(distX, distZ);
+        let horX = player.x - this.x;
+        let horZ = player.z - this.z;
 
-        let distMag = Math.sqrt(distX * distX + distZ * distZ);
+        if (horX == 0 && horZ == 0) return;
+
+        this.mesh.rotation.y = Math.atan2(horX, horZ);
+
+        let horDistMag = Math.sqrt(horX * horX + horZ * horZ);
 
         if (distMag <= attackDistance) {
             this.attack(player);
             return;
         }
 
-        distX /= distMag;
-        distZ /= distMag;
+        horX /= horDistMag;
+        horZ /= horDistMag;
 
-        this.newX += distX * deltaTime * this.speed;
-        this.newZ += distZ * deltaTime * this.speed;
+        this.newX += horX * deltaTime * this.speed;
+        this.newZ += horZ * deltaTime * this.speed;
 
         if (player.y - this.y > 0.2) {
             this.state = enemyMinerStates.jumping;

@@ -57,6 +57,12 @@ span {
     pointer-events: none;
 }
 
+#radar {
+    border-width: 0.25rem;
+    border-style: solid;
+    border-color: white;
+}
+
 #money {
     padding: 1%;
     font-size: 1.5rem;

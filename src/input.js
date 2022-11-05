@@ -4,6 +4,7 @@ export class Input {
         this.pressedMouseButtons = new Set();
         this.keyWasPressed = new Set();
         this.mouseButtonWasPressed = new Set();
+        this.onMouseMove = null;
     }
 
     isKeyPressed = (key) => {
@@ -28,6 +29,8 @@ export class Input {
     }
 
     addListeners = (onMouseMove) => {
+        this.onMouseMove = onMouseMove;
+
         this.clickListener = () => {
             document.body.requestPointerLock({
                 // Get raw mouse input. This prevents
@@ -41,9 +44,9 @@ export class Input {
 
         this.pointerLockChangeListener = () => {
             if (document.pointerLockElement == document.body) {
-                document.addEventListener("mousemove", onMouseMove);
+                document.addEventListener("mousemove", this.onMouseMove);
             } else {
-                document.removeEventListener("mousemove", onMouseMove);
+                document.removeEventListener("mousemove", this.onMouseMove);
                 this.pressedKeys.clear();
                 this.pressedMouseButtons.clear();
             }
@@ -80,6 +83,8 @@ export class Input {
     }
 
     removeListeners = () => {
+        document.removeEventListener("mousemove", this.onMouseMove);
+        document.removeEventListener("mousemove", onMouseMove);
         document.removeEventListener("click", this.clickListener);
         document.removeEventListener("pointerlockchange", this.pointerLockChangeListener);
         document.removeEventListener("keydown", this.keyDownListener);

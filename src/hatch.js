@@ -5,12 +5,19 @@ const meshYOffset = 0.5;
 
 export class Hatch {
     constructor(x, y, z, scene) {
+        this.x = x;
+        this.y = y;
+        this.z = z;
+
         this.mesh = new THREE.Object3D().copy(hatchModel);
-        this.mesh.position.x = x;
-        this.mesh.position.y = y - meshYOffset;
-        this.mesh.position.z = z;
 
         scene.add(this.mesh);
+    }
+
+    update = () => {
+        this.mesh.position.x = this.x;
+        this.mesh.position.y = this.y - meshYOffset;
+        this.mesh.position.z = this.z;
     }
 
     destroy = (scene) => {
