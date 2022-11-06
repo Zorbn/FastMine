@@ -2,7 +2,6 @@ import * as THREE from "../deps/three.js";
 import { gravity, isOnGround, isCollidingWithBlock, overlapsBlock } from "./physics.js";
 import { blocks, blocksById } from "./blocks.js";
 import { raycast } from "./physics.js";
-import { EnemyMiner } from "./enemyMiner.js";
 import { playerStepSound } from "./resources.js";
 
 const mouseSensitivity = 0.002;
@@ -17,7 +16,7 @@ export class Player {
         this.y = y;
         this.z = z;
 
-        this.angle = new THREE.Euler(0, 0, 0, "YXZ");
+        this.angle = new THREE.Euler(0, Math.random() * Math.PI * 2, 0, "YXZ");
 
         this.forwardX = 0;
         this.forwardZ = 1;
@@ -44,7 +43,7 @@ export class Player {
         this.health -= amount;
     }
 
-    interact = (deltaTime, scene, world, input, enemies, blockInteractionProvider, listener) => {
+    interact = (deltaTime, world, input, blockInteractionProvider) => {
         if (input.isMouseButtonPressed(0)) {
             let rayHit = raycast(world, this.x, this.y, this.z, this.lookX, this.lookY, this.lookZ, reach);
 
@@ -62,11 +61,15 @@ export class Player {
                 this.money -= scaffoldCost;
                 blockInteractionProvider.placeBlock(world, rayHit.lastX, rayHit.lastY, rayHit.lastZ, blocks.metal.id);
             }
-        } else if (input.wasMouseButtonPressed(1)) {
+        }
+
+        /*
+        else if (input.wasMouseButtonPressed(1)) {
             let rayHit = raycast(world, this.x, this.y, this.z, this.lookX, this.lookY, this.lookZ, reach);
 
             enemies.push(new EnemyMiner(rayHit.lastX + 0.5, rayHit.lastY + 0.5, rayHit.lastZ + 0.5, scene, listener));
         }
+        */
     }
 
     move = (deltaTime, world, camera, input) => {
@@ -180,8 +183,8 @@ export class Player {
 
     }
 
-    update = (deltaTime, scene, world, camera, input, enemies, blockInteractionProvider, listener) => {
-        this.interact(deltaTime, scene, world, input, enemies, blockInteractionProvider, listener);
+    update = (deltaTime, world, camera, input, blockInteractionProvider) => {
+        this.interact(deltaTime, world, input, blockInteractionProvider);
 
         if (input.wasKeyPressed("KeyF")) {
             this.isFlying = !this.isFlying;

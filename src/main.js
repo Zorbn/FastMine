@@ -1,6 +1,6 @@
 /*
- * FEAT:
- * Move between levels when clicking hatch.
+ * TODO:
+ * Make trap door cost money,
  */
 
 import * as THREE from "../deps/three.js";
@@ -14,6 +14,7 @@ import { Hatch } from "./hatch.js";
 import { indexTo3D } from "./gameMath.js";
 import { blocks } from "./blocks.js";
 import { Radar } from "./radar.js";
+import { overlapsBlock } from "./physics.js";
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -80,7 +81,7 @@ const update = (deltaTime) => {
     let oldPlayerMoney = player.money;
     let oldPlayerHealth = player.health;
 
-    player.update(deltaTime, scene, world, camera, input, enemies, blockInteractionProvider, listener);
+    player.update(deltaTime, world, camera, input, blockInteractionProvider);
 
     for (let [_hash, chunk] of world.chunks) {
         chunk.update(world);
@@ -91,11 +92,20 @@ const update = (deltaTime) => {
     }
 
     hatch.update();
-
     input.update();
+
+    // Check if player reached the hatch and should go to the next level.
+    if (overlapsBlock(player.x, player.y, player.z, player.size, player.size, player.size,
+        Math.floor(hatch.x), Math.floor(hatch.y), Math.floor(hatch.z))) {
+
+        destroyMap(false);
+        initMap();
+        return true;
+    }
 
     blockInteractionProvider.postUpdate();
 
+    // Update the UI.
     if (player.money != oldPlayerMoney) {
         updateMoneyLabel();
     }
@@ -108,13 +118,15 @@ const update = (deltaTime) => {
 
         updateHealthBar();
     }
+
+    return false;
 }
 
 const draw = (time) => {
     if (state == gameStates.inGame) {
         requestAnimationFrame(draw);
     } else {
-        destroyMap();
+        destroyMap(true);
         return;
     }
 
@@ -127,7 +139,7 @@ const draw = (time) => {
     if (isNaN(deltaTime) || deltaTime > 0.100) return;
     totalTime += deltaTime;
 
-    update(deltaTime);
+    if (update(deltaTime)) return;
 
     radar.draw(player, hatch, enemies);
 
@@ -165,7 +177,7 @@ const initMap = () => {
 
     player = new Player(playerSpawn.x, playerSpawn.y, playerSpawn.z);
 
-    while (world.getBlock(hatchSpawn.x, hatchSpawn.y - 1, hatchSpawn.z) == blocks.air.id) {
+    while (world.getBlock(Math.floor(hatchSpawn.x), Math.floor(hatchSpawn.y - 1), Math.floor(hatchSpawn.z)) == blocks.air.id) {
         hatchSpawn.y--;
     }
 
@@ -197,7 +209,9 @@ const initMap = () => {
         player.onMouseMove(e, camera);
     }
 
-    input.addListeners(onMouseMove);
+    if (!input.hasListeners) {
+        input.addListeners(onMouseMove);
+    }
 
     updateMoneyLabel();
     updateHealthBar();
@@ -205,16 +219,18 @@ const initMap = () => {
     healthBackground.style.width = `${healthBarWidth}rem`;
 }
 
-const destroyMap = () => {
+const destroyMap = (includeListeners) => {
     world.destroy(scene);
 
     while (enemies.length > 0) {
         enemies.pop().destroy(scene);
     }
 
-    hatch.destroy();
+    hatch.destroy(scene);
 
-    input.removeListeners();
+    if (includeListeners) {
+        input.removeListeners();
+    }
 }
 
 const setup = async () => {

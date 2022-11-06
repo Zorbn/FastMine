@@ -5,6 +5,7 @@ export class Input {
         this.keyWasPressed = new Set();
         this.mouseButtonWasPressed = new Set();
         this.onMouseMove = null;
+        this.hasListeners = false;
     }
 
     isKeyPressed = (key) => {
@@ -29,6 +30,8 @@ export class Input {
     }
 
     addListeners = (onMouseMove) => {
+        this.hasListeners = true;
+
         this.onMouseMove = onMouseMove;
 
         this.clickListener = () => {
@@ -83,8 +86,9 @@ export class Input {
     }
 
     removeListeners = () => {
+        this.hasListeners = false;
+
         document.removeEventListener("mousemove", this.onMouseMove);
-        document.removeEventListener("mousemove", onMouseMove);
         document.removeEventListener("click", this.clickListener);
         document.removeEventListener("pointerlockchange", this.pointerLockChangeListener);
         document.removeEventListener("keydown", this.keyDownListener);
