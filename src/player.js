@@ -171,7 +171,6 @@ export class Player {
             }
         }
 
-
         this.x = newX;
         this.y = newY;
         this.z = newZ;

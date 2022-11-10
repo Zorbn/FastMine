@@ -4,10 +4,12 @@ import { hatchModel } from "./resources.js";
 const meshYOffset = 0.5;
 
 export class Hatch {
-    constructor(x, y, z, scene) {
+    constructor(x, y, z, scene, cost) {
         this.x = x;
         this.y = y;
         this.z = z;
+
+        this.cost = cost;
 
         this.mesh = new THREE.Object3D().copy(hatchModel);
 

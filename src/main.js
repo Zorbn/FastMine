@@ -1,8 +1,3 @@
-/*
- * TODO:
- * Make trap door cost money,
- */
-
 import * as THREE from "../deps/three.js";
 import { BlockInteractionProvider } from "./blockInteractionProvider.js";
 import { World } from "./world.js";
@@ -25,6 +20,7 @@ const menu = document.getElementById("menu");
 const healthImage = document.getElementById("health");
 const healthBackground = document.getElementById("health-background");
 const healthBarWidth = 10;
+const hatchCost = 500;
 
 const gameStates = {
     menu: 0,
@@ -72,7 +68,7 @@ const updateHealthBar = () => {
 }
 
 const updateMoneyLabel = () => {
-    moneyLabel.innerText = `$${player.money}`;
+    moneyLabel.innerText = `$${player.money}/${hatchCost}`;
 }
 
 const update = (deltaTime) => {
@@ -98,9 +94,13 @@ const update = (deltaTime) => {
     if (overlapsBlock(player.x, player.y, player.z, player.size, player.size, player.size,
         Math.floor(hatch.x), Math.floor(hatch.y), Math.floor(hatch.z))) {
 
-        destroyMap(false);
-        initMap();
-        return true;
+        // Check if player can afford the enter the hatch.
+        if (player.money >= hatch.cost) {
+            // No need to remove the player's money, the player is reset with the map.
+            destroyMap(false);
+            initMap();
+            return true;
+        }
     }
 
     blockInteractionProvider.postUpdate();
@@ -177,11 +177,12 @@ const initMap = () => {
 
     player = new Player(playerSpawn.x, playerSpawn.y, playerSpawn.z);
 
+    // Make sure the hatch spawns on the floor.
     while (world.getBlock(Math.floor(hatchSpawn.x), Math.floor(hatchSpawn.y - 1), Math.floor(hatchSpawn.z)) == blocks.air.id) {
         hatchSpawn.y--;
     }
 
-    hatch = new Hatch(hatchSpawn.x, hatchSpawn.y, hatchSpawn.z, scene);
+    hatch = new Hatch(hatchSpawn.x, hatchSpawn.y, hatchSpawn.z, scene, hatchCost);
 
     for (let i = 0; i < chunkCount; i++) {
         const chunkPos = indexTo3D(i, mapSizeInChunks);
