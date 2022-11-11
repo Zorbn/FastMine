@@ -88,23 +88,13 @@ export let playerStepSound;
 export let ghostMinerAmbientAudioBuffer;
 
 export const loadResources = async (listener) => {
-    audioLoader.load("res/ghostMinerAmbientSound.ogg", (buffer) => {
-        ghostMinerAmbientAudioBuffer = buffer;
-    });
-
-    audioLoader.load("res/blockBreakSound.ogg", (buffer) => {
-        blockBreakAudioBuffer = buffer;
-    });
-    audioLoader.load("res/blockPlaceSound.ogg", (buffer) => {
-        blockPlaceAudioBuffer = buffer;
-    });
-
+    ghostMinerAmbientAudioBuffer = await audioLoader.loadAsync("res/ghostMinerAmbientSound.ogg");
+    blockBreakAudioBuffer = await audioLoader.loadAsync("res/blockBreakSound.ogg");
+    blockPlaceAudioBuffer = await audioLoader.loadAsync("res/blockPlaceSound.ogg");
     playerStepSound = new THREE.PositionalAudio(listener);
-    audioLoader.load("res/playerStepSound.ogg", (buffer) => {
-        playerStepSound.setBuffer(buffer);
-        playerStepSound.setRefDistance(1);
-        playerStepSound.setVolume(2);
-    });
+    playerStepSound.setBuffer(await audioLoader.loadAsync("res/playerStepSound.ogg"));
+    playerStepSound.setRefDistance(1);
+    playerStepSound.setVolume(2);
 
     const blocksImage = await imageLoader.loadAsync("res/blocks.png");
     const breakingImage = await imageLoader.loadAsync("res/breaking.png");
@@ -118,7 +108,7 @@ export const createGhostMinerAmbientSound = (listener) => {
     ghostMinerAmbientSound.setBuffer(ghostMinerAmbientAudioBuffer);
     ghostMinerAmbientSound.setLoop(true);
     ghostMinerAmbientSound.setRefDistance(1);
-    ghostMinerAmbientSound.setVolume(1);
+    ghostMinerAmbientSound.setVolume(0.5);
     ghostMinerAmbientSound.play();
     return ghostMinerAmbientSound;
 }

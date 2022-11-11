@@ -16,15 +16,17 @@ const camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerH
 const renderer = new THREE.WebGLRenderer();
 const moneyLabel = document.getElementById("money");
 const hud = document.getElementById("hud");
-const menu = document.getElementById("menu");
+const titleScreen = document.getElementById("title-screen");
+const deathScreen = document.getElementById("death-screen");
 const healthImage = document.getElementById("health");
 const healthBackground = document.getElementById("health-background");
 const healthBarWidth = 10;
 const hatchCost = 500;
 
 const gameStates = {
-    menu: 0,
+    title: 0,
     inGame: 1,
+    dead: 2,
 };
 
 // Create a random number generator using the "Simple Fast Counter"
@@ -59,7 +61,7 @@ let input;
 let world;
 let enemies = [];
 let blockInteractionProvider;
-let state = gameStates.menu;
+let state = gameStates.title;
 let radar;
 
 const updateHealthBar = () => {
@@ -112,8 +114,8 @@ const update = (deltaTime) => {
     if (player.health != oldPlayerHealth) {
         if (player.health <= 0) {
             input.unlockPointer();
-            setMenuEnabled(true);
-            state = gameStates.menu;
+            state = gameStates.dead;
+            setMenuState(state);
         }
 
         updateHealthBar();
@@ -146,13 +148,21 @@ const draw = (time) => {
     renderer.render(scene, camera);
 }
 
-const setMenuEnabled = (enabled) => {
-    if (enabled) {
-        hud.style.display = "none";
-        menu.style.display = "flex";
-    } else {
-        hud.style.display = "flex";
-        menu.style.display = "none";
+const setMenuState = (gameState) => {
+    hud.style.display = "none";
+    titleScreen.style.display = "none";
+    deathScreen.style.display = "none";
+
+    switch (gameState) {
+        case gameStates.inGame:
+            hud.style.display = "flex";
+            break;
+        case gameStates.title:
+            titleScreen.style.display = "flex";
+            break;
+        case gameStates.dead:
+            deathScreen.style.display = "flex";
+            break;
     }
 }
 
@@ -262,17 +272,17 @@ const setup = async () => {
 }
 
 const onClick = () => {
-    if (state != gameStates.menu) return;
+    if (state == gameStates.inGame) return;
 
     state = gameStates.inGame;
     initMap();
     draw();
-    setMenuEnabled(false);
+    setMenuState(state);
 }
 const onFirstClick = async () => {
     document.removeEventListener("click", onFirstClick);
-    document.addEventListener("click", onClick);
     await setup();
     onClick();
+    document.addEventListener("click", onClick);
 };
 document.addEventListener("click", onFirstClick);

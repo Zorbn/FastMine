@@ -8,33 +8,37 @@ span {
     font-family: "Fira Mono", monospace;
 }
 
-#menu {
+.menu {
     display: flex;
     justify-content: center;
     align-items: center;
     flex-direction: column;
 }
 
-#title {
+.title {
     z-index: 1;
     margin-top: 6rem;
     image-rendering: pixelated;
     width: 50%;
 }
 
-#start-prompt {
+.start-prompt {
     z-index: 1;
     color: white;
     margin-top: 12rem;
     font-size: 2rem;
 }
 
-#background {
+.menu-background {
     position: absolute;
     top: 0;
     left: 0;
     width: 100vw;
     height: 100vh;
+}
+
+#death-screen {
+    display: none;
 }
 
 #hud {
