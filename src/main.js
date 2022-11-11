@@ -263,6 +263,7 @@ const setup = async () => {
     input = new Input();
 
     listener = new THREE.AudioListener();
+    // listener.setMasterVolume(0);
     camera.add(listener);
     await loadResources(listener);
 

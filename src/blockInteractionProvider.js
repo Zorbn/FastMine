@@ -1,7 +1,7 @@
 import * as THREE from "../deps/three.js";
 import { blocks, blocksById } from "./blocks.js";
 import { hashVector } from "./gameMath.js";
-import { blockBreakAudioBuffer, blockPlaceAudioBuffer } from "./resources.js";
+import { blockBreakAudioBuffer, blockPlaceAudioBuffer, randomizeDetune } from "./resources.js";
 import { breakingTexture } from "./resources.js";
 
 export const breakingTexCount = 4;
@@ -74,7 +74,7 @@ export class BlockInteractionProvider {
         if (audio == undefined) {
             audio = new THREE.PositionalAudio(this.listener);
             audio.setRefDistance(1);
-            audio.detune = Math.random() * 400;
+            randomizeDetune(audio);
             audio.setVolume(4);
         }
         audio.setBuffer(soundBuffer);

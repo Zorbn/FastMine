@@ -17,6 +17,8 @@ const attackCooldown = 0.5;
 const attackDamage = 10;
 const detectionRange = 10;
 const attackDistance = 0.8;
+const audioVarianceMs = 8000;
+const audioVarianceMinMs = 1000;
 
 export class EnemyMiner {
     constructor(x, y, z, scene, listener) {
@@ -38,12 +40,28 @@ export class EnemyMiner {
         this.mesh = new THREE.Object3D().copy(ghostMinerModel);
         this.audio = createGhostMinerAmbientSound(listener);
         this.mesh.add(this.audio);
+        this.queueSound();
+
         this.mesh.rotation.y = Math.random() * Math.PI * 2;
         this.leftLeg = this.mesh.getObjectByName("lLeg");
         this.rightLeg = this.mesh.getObjectByName("rLeg");
         this.animationProgress = 0;
 
         scene.add(this.mesh);
+    }
+
+    // Make the enemy audio play at different offsets,
+    // so that each enemy has a distinct sound.
+    queueSound = () => {
+        setTimeout(this.playSound, Math.random() * audioVarianceMs + audioVarianceMinMs);
+    }
+
+    playSound = () => {
+        if (!this.audio.isPlaying) {
+            this.audio.play();
+        }
+
+        this.queueSound();
     }
 
     attack = (player) => {
@@ -213,6 +231,7 @@ export class EnemyMiner {
     }
 
     destroy = (scene) => {
+        clearTimeout(this.playSound);
         this.audio.stop();
         scene.remove(this.mesh);
     }

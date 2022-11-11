@@ -51,6 +51,8 @@ const texComponents = 4; // RGBA
 const canvas = new OffscreenCanvas(blockTexSpan, blockTexSize);
 const ctx2D = canvas.getContext("2d");
 
+const detuneVariance = 400;
+
 const loadTexArray = (image, depth, size, span) => {
     ctx2D.clearRect(0, 0, canvas.width, canvas.height);
     ctx2D.drawImage(image, 0, 0);
@@ -108,11 +110,15 @@ export const createGhostMinerAmbientSound = (listener) => {
     ghostMinerAmbientSound.setBuffer(ghostMinerAmbientAudioBuffer);
     ghostMinerAmbientSound.setLoop(true);
     ghostMinerAmbientSound.setRefDistance(1);
-    ghostMinerAmbientSound.setVolume(0.5);
-    ghostMinerAmbientSound.play();
+    ghostMinerAmbientSound.setMaxDistance(10);
+    randomizeDetune(ghostMinerAmbientSound);
     return ghostMinerAmbientSound;
 }
 
 export const disposeResources = () => {
     ghostMinerMaterial.dispose();
+}
+
+export const randomizeDetune = (sound) => {
+    sound.detune = Math.random() * detuneVariance;
 }
