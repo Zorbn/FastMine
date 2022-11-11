@@ -108,7 +108,6 @@ export const loadResources = async (listener) => {
 export const createGhostMinerAmbientSound = (listener) => {
     const ghostMinerAmbientSound = new THREE.PositionalAudio(listener);
     ghostMinerAmbientSound.setBuffer(ghostMinerAmbientAudioBuffer);
-    ghostMinerAmbientSound.setLoop(true);
     ghostMinerAmbientSound.setRefDistance(1);
     ghostMinerAmbientSound.setMaxDistance(10);
     randomizeDetune(ghostMinerAmbientSound);

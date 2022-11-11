@@ -15,6 +15,7 @@ const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer();
 const moneyLabel = document.getElementById("money");
+const levelLabel = document.getElementById("level");
 const hud = document.getElementById("hud");
 const titleScreen = document.getElementById("title-screen");
 const deathScreen = document.getElementById("death-screen");
@@ -63,6 +64,7 @@ let enemies = [];
 let blockInteractionProvider;
 let state = gameStates.title;
 let radar;
+let level;
 
 const updateHealthBar = () => {
     let newWidth = player.health * 0.01 * healthBarWidth;
@@ -71,6 +73,20 @@ const updateHealthBar = () => {
 
 const updateMoneyLabel = () => {
     moneyLabel.innerText = `$${player.money}/${hatchCost}`;
+}
+
+const updateLevelLabel = () => {
+    levelLabel.innerText = `Lv${level}`;
+}
+
+const incrementLevelLabel = () => {
+    level++;
+    updateLevelLabel();
+}
+
+const resetLevelLabel = () => {
+    level = 1;
+    updateLevelLabel()
 }
 
 const update = (deltaTime) => {
@@ -99,6 +115,7 @@ const update = (deltaTime) => {
         // Check if player can afford the enter the hatch.
         if (player.money >= hatch.cost) {
             // No need to remove the player's money, the player is reset with the map.
+            incrementLevelLabel();
             destroyMap(false);
             initMap();
             return true;
@@ -113,6 +130,7 @@ const update = (deltaTime) => {
     }
     if (player.health != oldPlayerHealth) {
         if (player.health <= 0) {
+            level = 1;
             input.unlockPointer();
             state = gameStates.dead;
             setMenuState(state);
@@ -277,6 +295,7 @@ const onClick = () => {
     state = gameStates.inGame;
     initMap();
     draw();
+    resetLevelLabel();
     setMenuState(state);
 }
 const onFirstClick = async () => {

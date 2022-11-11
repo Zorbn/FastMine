@@ -17,8 +17,8 @@ const attackCooldown = 0.5;
 const attackDamage = 10;
 const detectionRange = 10;
 const attackDistance = 0.8;
-const audioVarianceMs = 8000;
-const audioVarianceMinMs = 1000;
+const audioVariance = 8;
+const audioVarianceMin = 1;
 
 export class EnemyMiner {
     constructor(x, y, z, scene, listener) {
@@ -40,28 +40,22 @@ export class EnemyMiner {
         this.mesh = new THREE.Object3D().copy(ghostMinerModel);
         this.audio = createGhostMinerAmbientSound(listener);
         this.mesh.add(this.audio);
-        this.queueSound();
 
         this.mesh.rotation.y = Math.random() * Math.PI * 2;
         this.leftLeg = this.mesh.getObjectByName("lLeg");
         this.rightLeg = this.mesh.getObjectByName("rLeg");
         this.animationProgress = 0;
 
+        this.nextAudioProgress = 0;
+        this.nextAudioTime = this.getNextAudioTime();
+
         scene.add(this.mesh);
     }
 
     // Make the enemy audio play at different offsets,
     // so that each enemy has a distinct sound.
-    queueSound = () => {
-        setTimeout(this.playSound, Math.random() * audioVarianceMs + audioVarianceMinMs);
-    }
-
-    playSound = () => {
-        if (!this.audio.isPlaying) {
-            this.audio.play();
-        }
-
-        this.queueSound();
+    getNextAudioTime = () => {
+        return Math.random() * audioVariance + audioVarianceMin;
     }
 
     attack = (player) => {
@@ -228,11 +222,20 @@ export class EnemyMiner {
         this.mesh.position.x = this.x;
         this.mesh.position.y = this.y + meshYOffset;
         this.mesh.position.z = this.z;
+
+        this.nextAudioProgress += deltaTime;
+
+        if (this.nextAudioProgress > this.nextAudioTime) {
+            this.nextAudioProgress = 0;
+            this.nextAudioTime = this.getNextAudioTime();
+
+            if (!this.audio.isPlaying) {
+                this.audio.play();
+            }
+        }
     }
 
     destroy = (scene) => {
-        clearTimeout(this.playSound);
-        this.audio.stop();
         scene.remove(this.mesh);
     }
 }

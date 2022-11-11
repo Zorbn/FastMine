@@ -2,7 +2,8 @@ import * as THREE from "../deps/three.js";
 import { gravity, isOnGround, isCollidingWithBlock, overlapsBlock } from "./physics.js";
 import { blocks, blocksById } from "./blocks.js";
 import { raycast } from "./physics.js";
-import { playerStepSound } from "./resources.js";
+import { playerStepSound, randomizeDetune } from "./resources.js";
+import { debugMode } from "./debug.js";
 
 const mouseSensitivity = 0.002;
 const maxLookAngle = Math.PI * 0.5 * 0.99;
@@ -62,14 +63,6 @@ export class Player {
                 blockInteractionProvider.placeBlock(world, rayHit.lastX, rayHit.lastY, rayHit.lastZ, blocks.metal.id);
             }
         }
-
-        /*
-        else if (input.wasMouseButtonPressed(1)) {
-            let rayHit = raycast(world, this.x, this.y, this.z, this.lookX, this.lookY, this.lookZ, reach);
-
-            enemies.push(new EnemyMiner(rayHit.lastX + 0.5, rayHit.lastY + 0.5, rayHit.lastZ + 0.5, scene, listener));
-        }
-        */
     }
 
     move = (deltaTime, world, camera, input) => {
@@ -165,7 +158,7 @@ export class Player {
 
             if (this.x != newX || this.y != newY || this.z != newZ) {
                 if (!this.stepSound.isPlaying) {
-                    this.stepSound.detune = Math.random() * 400;
+                    randomizeDetune(this.stepSound);
                     this.stepSound.play();
                 }
             }
@@ -185,7 +178,7 @@ export class Player {
     update = (deltaTime, world, camera, input, blockInteractionProvider) => {
         this.interact(deltaTime, world, input, blockInteractionProvider);
 
-        if (input.wasKeyPressed("KeyF")) {
+        if (debugMode && input.wasKeyPressed("KeyF")) {
             this.isFlying = !this.isFlying;
         }
 

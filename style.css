@@ -68,7 +68,12 @@ span {
 }
 
 #money {
-    padding: 1%;
+    padding: 1% 1% 0% 1%;
+    font-size: 1.5rem;
+}
+
+#level {
+    padding: 0% 1% 1% 1%;
     font-size: 1.5rem;
 }
 
