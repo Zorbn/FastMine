@@ -1,6 +1,7 @@
 import { blocks } from "./blocks.js";
 
-export const gravity = 0.5;
+export const gravity = 30;
+export const jumpForce = 10;
 
 // Check every corner of a cubic object for collisions.
 export const isCollidingWithBlock = (world, x, y, z, sizeX, sizeY, sizeZ) => {

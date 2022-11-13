@@ -1,7 +1,7 @@
 import * as THREE from "../deps/three.js";
 import { createGhostMinerAmbientSound, ghostMinerModel } from "./resources.js";
 import { blocks } from "./blocks.js";
-import { gravity, getBlockCollision, isOnGround, overlapsBlock, raycast } from "./physics.js";
+import { gravity, getBlockCollision, isOnGround, overlapsBlock, raycast, jumpForce } from "./physics.js";
 
 const enemyMinerStates = {
     chasing: 0,
@@ -107,7 +107,7 @@ export class EnemyMiner {
         let grounded = isOnGround(world, this.x, this.y, this.z, this.size, this.size, this.size);
 
         if (grounded) {
-            this.yVelocity = gravity * 20;
+            this.yVelocity = jumpForce;
         } else {
             let blockX = Math.floor(this.x);
             let blockZ = Math.floor(this.z);
@@ -183,7 +183,7 @@ export class EnemyMiner {
 
         this.attackTimer -= deltaTime;
 
-        this.yVelocity -= gravity;
+        this.yVelocity -= gravity * deltaTime;
         this.newY += this.yVelocity * deltaTime;
 
         let yCollision = getBlockCollision(world, this.x, this.newY, this.z, this.size, this.size, this.size);

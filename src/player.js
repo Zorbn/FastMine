@@ -1,5 +1,5 @@
 import * as THREE from "../deps/three.js";
-import { gravity, isOnGround, isCollidingWithBlock, overlapsBlock } from "./physics.js";
+import { gravity, isOnGround, isCollidingWithBlock, overlapsBlock, jumpForce } from "./physics.js";
 import { blocks, blocksById } from "./blocks.js";
 import { raycast } from "./physics.js";
 import { playerStepSound, randomizeDetune } from "./resources.js";
@@ -99,7 +99,7 @@ export class Player {
             }
         } else {
             if (input.isKeyPressed("Space") && grounded) {
-                this.yVelocity = gravity * 20;
+                this.yVelocity = jumpForce;
             }
         }
 
@@ -142,7 +142,7 @@ export class Player {
             this.yVelocity = 0;
             newY += moveUp * currentSpeed;
         } else {
-            this.yVelocity -= gravity;
+            this.yVelocity -= gravity * deltaTime;
             newY += this.yVelocity * deltaTime;
         }
 
