@@ -1,6 +1,7 @@
 import { Chunk } from "./chunk.js";
 import { hashVector } from "./gameMath.js";
 import { blocks } from "./blocks.js";
+import { hitBlockById } from "./physics.js";
 
 export class World {
     constructor(chunkSize, mapSizeInChunks) {
@@ -57,6 +58,12 @@ export class World {
         let chunk = this.getChunk(chunkX, chunkY, chunkZ);
         if (chunk == null) return blocks.air.id;
         return chunk.getBlock(localX, localY, localZ);
+    }
+
+    // Check if a block is occupied (ie: not air). Optionally, consider transparent blocks to be occupied.
+    isBlockOccupied = (x, y, z, includeTransparent) => {
+        let id = this.getBlock(x, y, z);
+        return hitBlockById(id, includeTransparent);
     }
 
     isBlockSupported = (x, y, z) => {

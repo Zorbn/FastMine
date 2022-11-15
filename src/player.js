@@ -46,7 +46,7 @@ export class Player {
 
     interact = (deltaTime, world, input, blockInteractionProvider) => {
         if (input.isMouseButtonPressed(0)) {
-            let rayHit = raycast(world, this.x, this.y, this.z, this.lookX, this.lookY, this.lookZ, reach);
+            let rayHit = raycast(world, this.x, this.y, this.z, this.lookX, this.lookY, this.lookZ, reach, true);
 
             if (rayHit.hit) {
                 let minedBlock = blockInteractionProvider.mineBlock(world, rayHit.x, rayHit.y, rayHit.z, deltaTime);
@@ -56,7 +56,7 @@ export class Player {
                 }
             }
         } else if (input.wasMouseButtonPressed(2) && this.money >= scaffoldCost) {
-            let rayHit = raycast(world, this.x, this.y, this.z, this.lookX, this.lookY, this.lookZ, reach);
+            let rayHit = raycast(world, this.x, this.y, this.z, this.lookX, this.lookY, this.lookZ, reach, true);
 
             if (rayHit.hit && !overlapsBlock(this.x, this.y, this.z, this.size, this.size, this.size, rayHit.lastX, rayHit.lastY, rayHit.lastZ)) {
                 this.money -= scaffoldCost;

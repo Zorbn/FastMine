@@ -1,6 +1,6 @@
 import * as THREE from "../deps/three.js";
 import { createGhostMinerAmbientSound, ghostMinerModel } from "./resources.js";
-import { blocks } from "./blocks.js";
+import { blocks, blocksById } from "./blocks.js";
 import { gravity, getBlockCollision, isOnGround, overlapsBlock, raycast, jumpForce } from "./physics.js";
 
 const enemyMinerStates = {
@@ -113,10 +113,17 @@ export class EnemyMiner {
             let blockZ = Math.floor(this.z);
             let lowerBlockY = Math.floor(this.y - 1);
 
-            if (!overlapsBlock(this.x, this.y, this.z, this.size, this.size, this.size, blockX, lowerBlockY, blockZ) && // Follower won't get stuck inside block.
-                world.getBlock(blockX, lowerBlockY, blockZ) == blocks.air.id && // Block is currently empty.
-                world.isBlockSupported(blockX, lowerBlockY, blockZ)) {          // Block is supported.
-                blockInteractionProvider.placeBlock(world, blockX, lowerBlockY, blockZ, blocks.wood.id);
+            let lowerBlock = world.getBlock(blockX, lowerBlockY, blockZ);
+
+            if (lowerBlock == blocks.air.id) { // Block is empty.
+                if (!overlapsBlock(this.x, this.y, this.z, this.size, this.size, this.size, blockX, lowerBlockY, blockZ) && // Follower won't get stuck inside block.
+                    world.isBlockSupported(blockX, lowerBlockY, blockZ)) { // Block is supported.
+                    blockInteractionProvider.placeBlock(world, blockX, lowerBlockY, blockZ, blocks.wood.id);
+                }
+            } else if (blocksById.get(lowerBlock).transparent) { // Can't place block because a transparent block is in the way.
+                // So, destroy it.
+                this.beginMining(blockX, lowerBlockY, blockZ);
+                return
             }
         }
 
@@ -148,7 +155,7 @@ export class EnemyMiner {
             }
 
             // Check if player can be seen by this enemy.
-            if (raycast(world, this.x, this.y, this.z, distX, distY, distZ, detectionRange).distance > distMag) {
+            if (raycast(world, this.x, this.y, this.z, distX, distY, distZ, detectionRange, false).distance > distMag) {
                 this.state = enemyMinerStates.chasing;
             }
         }
@@ -186,7 +193,7 @@ export class EnemyMiner {
         this.yVelocity -= gravity * deltaTime;
         this.newY += this.yVelocity * deltaTime;
 
-        let yCollision = getBlockCollision(world, this.x, this.newY, this.z, this.size, this.size, this.size);
+        let yCollision = getBlockCollision(world, this.x, this.newY, this.z, this.size, this.size, this.size, false);
         if (yCollision != null) {
             this.yVelocity = 0;
             this.newY = this.y;
@@ -197,7 +204,7 @@ export class EnemyMiner {
             }
         }
 
-        let xCollision = getBlockCollision(world, this.newX, this.y, this.z, this.size, this.size, this.size);
+        let xCollision = getBlockCollision(world, this.newX, this.y, this.z, this.size, this.size, this.size, false);
         if (xCollision != null) {
             this.newX = this.x;
 
@@ -206,7 +213,7 @@ export class EnemyMiner {
             }
         }
 
-        let zCollision = getBlockCollision(world, this.x, this.y, this.newZ, this.size, this.size, this.size);
+        let zCollision = getBlockCollision(world, this.x, this.y, this.newZ, this.size, this.size, this.size, false);
         if (zCollision != null) {
             this.newZ = this.z;
 

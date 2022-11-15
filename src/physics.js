@@ -1,7 +1,11 @@
-import { blocks } from "./blocks.js";
+import { blocks, blocksById } from "./blocks.js";
 
 export const gravity = 30;
 export const jumpForce = 10;
+
+export const hitBlockById = (id, includeTransparent) => {
+    return id != blocks.air.id && (includeTransparent || !blocksById.get(id).transparent);
+}
 
 // Check every corner of a cubic object for collisions.
 export const isCollidingWithBlock = (world, x, y, z, sizeX, sizeY, sizeZ) => {
@@ -14,7 +18,7 @@ export const isCollidingWithBlock = (world, x, y, z, sizeX, sizeY, sizeZ) => {
         let cornerY = Math.floor(y + sizeY * 0.5 * yOff);
         let cornerZ = Math.floor(z + sizeZ * 0.5 * zOff);
 
-        if (world.getBlock(cornerX, cornerY, cornerZ) != blocks.air.id) {
+        if (world.isBlockOccupied(cornerX, cornerY, cornerZ, false)) {
             return true;
         }
     }
@@ -23,7 +27,7 @@ export const isCollidingWithBlock = (world, x, y, z, sizeX, sizeY, sizeZ) => {
 }
 
 // Return the first block being collided with.
-export const getBlockCollision = (world, x, y, z, sizeX, sizeY, sizeZ) => {
+export const getBlockCollision = (world, x, y, z, sizeX, sizeY, sizeZ, includeTransparent) => {
     for (let i = 0; i < 8; i++) {
         let xOff = i % 2 * 2 - 1;
         let yOff = Math.floor(i / 4) * 2 - 1;
@@ -33,7 +37,7 @@ export const getBlockCollision = (world, x, y, z, sizeX, sizeY, sizeZ) => {
         let cornerY = Math.floor(y + sizeY * 0.5 * yOff);
         let cornerZ = Math.floor(z + sizeZ * 0.5 * zOff);
 
-        if (world.getBlock(cornerX, cornerY, cornerZ) != blocks.air.id) {
+        if (world.isBlockOccupied(cornerX, cornerY, cornerZ, includeTransparent)) {
             return {
                 x: cornerX,
                 y: cornerY,
@@ -61,7 +65,7 @@ export const isOnGround = (world, x, y, z, sizeX, sizeY, sizeZ) => {
     return isCollidingWithBlock(world, x, y - (sizeY + feetHitboxSize) * 0.5, z, sizeX, feetHitboxSize, sizeZ);
 }
 
-export const raycast = (world, startX, startY, startZ, dirX, dirY, dirZ, range) => {
+export const raycast = (world, startX, startY, startZ, dirX, dirY, dirZ, range, includeTransparent) => {
     // Prevent initial step from being 0, it creates artifacts in the algorithm.
     // if (startX - Math.floor(startX) == 0) {
     //     startX -= 0.01;
@@ -141,7 +145,7 @@ export const raycast = (world, startX, startY, startZ, dirX, dirY, dirZ, range) 
     }
 
     return {
-        hit: hitBlock != blocks.air.id,
+        hit: hitBlockById(hitBlock, includeTransparent),
         block: hitBlock,
         distance: lastDistToNext,
         x: blockX,

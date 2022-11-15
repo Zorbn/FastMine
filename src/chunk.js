@@ -1,10 +1,13 @@
 import * as THREE from "../deps/three.js";
-import { blocks } from "./blocks.js";
+import { blocks, blocksById } from "./blocks.js";
 import { directionVecs } from "./direction.js";
-import { cubeIndices, cubeVertices, cubeUvs, faceColors } from "./cubeMesh.js";
+import { cubeMesh } from "./cubeMesh.js";
+import { crossMesh } from "./crossMesh.js";
 
 const shadeNoiseScale = 0.2;
 const caveNoiseScale = 0.1;
+const caveNoiseSolidThreshold = 0.4;
+const caveNoiseDecorationThreshold = 0.45;
 
 const vs = `
 attribute vec3 uv3;
@@ -31,6 +34,10 @@ out vec4 outColor;
 
 void main() {
     outColor = texture(diffuse, vertUv) * vec4(vertColor, 1.0);
+
+    if (outColor.a < 0.5) {
+        discard;
+    }
 }
 `;
 
@@ -109,31 +116,42 @@ export class Chunk {
             // Don't render air.
             if (block == blocks.air.id) continue;
 
-            for (let dir = 0; dir < 6; dir++) {
-                // Only generate faces that will be visible.
-                const dirVec = directionVecs[dir];
-                if (world.getBlock(worldX + dirVec[0], worldY + dirVec[1], worldZ + dirVec[2]) == -1) {
-                    // Add indices before adding vertices, they refer
-                    // to the upcoming vertices.
+            let mesh;
+            let cullFaces;
+
+            if (blocksById.get(block).transparent) {
+                mesh = crossMesh;
+                cullFaces = false;
+            } else {
+                mesh = cubeMesh;
+                cullFaces = true;
+            }
+
+            const faces = mesh.vertices.length;
+
+            for (let face = 0; face < faces; face++) {
+                // Only generate faces that will be visible when culling is enabled.
+                const dir= directionVecs[face];
+                if (!cullFaces || !world.isBlockOccupied(worldX + dir[0], worldY + dir[1], worldZ + dir[2], false)) {
                     for (let ii = 0; ii < 6; ii++) {
-                        indices[indexI] = cubeIndices[dir][ii] + vertexI;
+                        indices[indexI] = mesh.indices[face][ii] + vertexI;
                         indexI++;
                     }
 
                     for (let vi = 0; vi < 4; vi++) {
                         // Add vertex x, y, and z for this face.
-                        vertices[vertexComponentI] = cubeVertices[dir][vi * 3] + worldX;
-                        vertices[vertexComponentI + 1] = cubeVertices[dir][vi * 3 + 1] + worldY;
-                        vertices[vertexComponentI + 2] = cubeVertices[dir][vi * 3 + 2] + worldZ;
+                        vertices[vertexComponentI] = mesh.vertices[face][vi * 3] + worldX;
+                        vertices[vertexComponentI + 1] = mesh.vertices[face][vi * 3 + 1] + worldY;
+                        vertices[vertexComponentI + 2] = mesh.vertices[face][vi * 3 + 2] + worldZ;
 
                         // Add UV x and y for this face.
-                        uvs[vertexComponentI] = cubeUvs[dir][vi * 2];
-                        uvs[vertexComponentI + 1] = cubeUvs[dir][vi * 2 + 1];
+                        uvs[vertexComponentI] = mesh.uvs[face][vi * 2];
+                        uvs[vertexComponentI + 1] = mesh.uvs[face][vi * 2 + 1];
                         // The UV's z is the index of it's texture.
                         uvs[vertexComponentI + 2] = block;
 
                         // Add color for this face.
-                        let faceColor = faceColors[dir] * 0.9 + noiseValue * 0.1;
+                        let faceColor = mesh.colors[face] * 0.9 + noiseValue * 0.1;
                         colors[vertexComponentI] = faceColor;
                         colors[vertexComponentI + 1] = faceColor;
                         colors[vertexComponentI + 2] = faceColor;
@@ -175,7 +193,7 @@ export class Chunk {
 
             const noiseValue = noise.simplex3(worldX * caveNoiseScale, worldY * caveNoiseScale, worldZ * caveNoiseScale);
 
-            if (noiseValue < 0.4) {
+            if (noiseValue < caveNoiseSolidThreshold) {
                 let randNum = rng();
                 let block = blocks.dirt.id;
 
@@ -188,8 +206,25 @@ export class Chunk {
                 }
 
                 this.setBlock(x, y, z, block);
+            } else if (noiseValue < caveNoiseDecorationThreshold && rng() < 0.2) {
+                let block = blocks.air.id;
+
+                if (this.shouldGenerateSolid(worldX, worldY - 1, worldZ)) {
+                    block = blocks.greenMushroom.id;
+                } else if (this.shouldGenerateSolid(worldX, worldY + 1, worldZ)) {
+                    block = blocks.redMushroom.id;
+                }
+
+                if (block != blocks.air.id) {
+                    this.setBlock(x, y, z, block);
+                }
             }
         }
+    }
+
+    shouldGenerateSolid = (worldX, worldY, worldZ) => {
+        const noiseValue = noise.simplex3(worldX * caveNoiseScale, worldY * caveNoiseScale, worldZ * caveNoiseScale);
+        return noiseValue < caveNoiseSolidThreshold;
     }
 
     destroy = (scene) => {
