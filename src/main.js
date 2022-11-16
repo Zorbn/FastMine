@@ -14,15 +14,21 @@ import { overlapsBlock } from "./physics.js";
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer();
+
 const moneyLabel = document.getElementById("money");
 const levelLabel = document.getElementById("level");
 const hud = document.getElementById("hud");
+
 const titleScreen = document.getElementById("title-screen");
 const deathScreen = document.getElementById("death-screen");
+
 const healthImage = document.getElementById("health");
 const healthBackground = document.getElementById("health-background");
 const healthBarWidth = 10;
-const hatchCost = 500;
+
+const minHatchCost = 400;
+const maxHatchCost = 1000;
+const hatchCostIncrement = 100;
 
 const gameStates = {
     title: 0,
@@ -70,6 +76,7 @@ let blockInteractionProvider;
 let state = gameStates.title;
 let radar;
 let level;
+let hatchCost;
 
 const updateHealthBar = () => {
     let newWidth = player.health * 0.01 * healthBarWidth;
@@ -92,6 +99,16 @@ const incrementLevelLabel = () => {
 const resetLevelLabel = () => {
     level = 1;
     updateLevelLabel()
+}
+
+const incrementHatchCost = () => {
+    if (hatchCost < maxHatchCost) {
+        hatchCost += hatchCostIncrement;
+    }
+}
+
+const resetHatchCost = () => {
+    hatchCost = minHatchCost;
 }
 
 const update = (deltaTime) => {
@@ -120,6 +137,7 @@ const update = (deltaTime) => {
         // Check if player can afford the enter the hatch.
         if (player.money >= hatch.cost) {
             // No need to remove the player's money, the player is reset with the map.
+            incrementHatchCost();
             incrementLevelLabel();
             destroyMap(false);
             initMap();
@@ -135,7 +153,8 @@ const update = (deltaTime) => {
     }
     if (player.health != oldPlayerHealth) {
         if (player.health <= 0) {
-            level = 1;
+            resetLevelLabel();
+            resetHatchCost();
             input.unlockPointer();
             state = gameStates.dead;
             setMenuState(state);
@@ -299,9 +318,10 @@ const onClick = () => {
     if (state == gameStates.inGame) return;
 
     state = gameStates.inGame;
+    resetLevelLabel();
+    resetHatchCost();
     initMap();
     draw();
-    resetLevelLabel();
     setMenuState(state);
 }
 const onFirstClick = async () => {
