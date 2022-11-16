@@ -37,7 +37,7 @@ objLoader.load("res/hatch.obj", (obj) => {
 
 
 const blockTexSize = 16;
-const blockTexCount = 32;
+const blockTexCount = 64;
 
 const breakingTexSize = 16;
 

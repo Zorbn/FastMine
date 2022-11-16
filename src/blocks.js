@@ -137,6 +137,78 @@ export const blocks = {
         breakTime: 0,
         transparent: true,
     },
+    snow: {
+        id: 22,
+        value: 1,
+        breakTime: 0.5,
+        transparent: false,
+    },
+    magnetite: {
+        id: 23,
+        value: 5,
+        breakTime: 0.5,
+        transparent: false,
+    },
+    malacite: {
+        id: 24,
+        value: 20,
+        breakTime: 1,
+        transparent: false,
+    },
+    sapphire: {
+        id: 25,
+        value: 100,
+        breakTime: 2,
+        transparent: false,
+    },
+    tree: {
+        id: 26,
+        value: 1,
+        breakTime: 0,
+        transparent: true,
+    },
+    icicle: {
+        id: 27,
+        value: 1,
+        breakTime: 0,
+        transparent: true,
+    },
+    pumice: {
+        id: 28,
+        value: 1,
+        breakTime: 0.5,
+        transparent: false,
+    },
+    amber: {
+        id: 29,
+        value: 5,
+        breakTime: 0.5,
+        transparent: false,
+    },
+    nickel: {
+        id: 30,
+        value: 20,
+        breakTime: 1,
+        transparent: false,
+    },
+    diamond: {
+        id: 31,
+        value: 100,
+        breakTime: 2,
+        transparent: false,
+    },
+    stalagmite: {
+        id: 32,
+        value: 1,
+        breakTime: 0,
+        transparent: true,
+    },
+    stalactite: {
+        id: 33,
+        value: 1,
+        breakTime: 0,
+        transparent: true,
+    },
 };
 
 export const blockPalettes = [
@@ -163,6 +235,22 @@ export const blockPalettes = [
         "ore2": blocks.gold.id,
         "groundDecor": blocks.skull.id,
         "ceilingDecor": blocks.lamp.id,
+    },
+    {
+        "ground": blocks.snow.id,
+        "ore0": blocks.magnetite.id,
+        "ore1": blocks.malacite.id,
+        "ore2": blocks.sapphire.id,
+        "groundDecor": blocks.tree.id,
+        "ceilingDecor": blocks.icicle.id,
+    },
+    {
+        "ground": blocks.pumice.id,
+        "ore0": blocks.amber.id,
+        "ore1": blocks.nickel.id,
+        "ore2": blocks.diamond.id,
+        "groundDecor": blocks.stalagmite.id,
+        "ceilingDecor": blocks.stalactite.id,
     },
 ];
 
