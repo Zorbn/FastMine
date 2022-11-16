@@ -29,7 +29,7 @@ export class Input {
         this.mouseButtonWasPressed.clear();
     }
 
-    addListeners = (onMouseMove) => {
+    addListeners = (onMouseMove, grabMouseNow) => {
         this.hasListeners = true;
 
         this.onMouseMove = onMouseMove;
@@ -83,6 +83,10 @@ export class Input {
             this.pressedMouseButtons.delete(event.button);
         };
         document.addEventListener("mouseup", this.mouseUpListener);
+
+        if (grabMouseNow) {
+            this.clickListener();
+        }
     }
 
     removeListeners = () => {

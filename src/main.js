@@ -7,7 +7,7 @@ import { EnemyMiner } from "./enemyMiner.js";
 import { loadResources, chunkTexture } from "./resources.js";
 import { Hatch } from "./hatch.js";
 import { indexTo3D } from "./gameMath.js";
-import { blocks } from "./blocks.js";
+import { blockPalettes, blocks } from "./blocks.js";
 import { Radar } from "./radar.js";
 import { overlapsBlock } from "./physics.js";
 
@@ -52,6 +52,11 @@ const sfc32 = (a, b, c, d) => {
 // Used for gameplay related rng, visual-only rng uses standard Math.random().
 const seed = Math.random() * 65536;
 const rng = sfc32(0, 0, 0, seed);
+// Mix the rng state to account for simple seed.
+// Otherwise starting numbers might be similar across plays.
+for (let i = 0; i < 20; i++) {
+    rng();
+}
 
 let lastTime = 0;
 let totalTime = 0;
@@ -189,8 +194,9 @@ const initMap = () => {
 
     const mapSizeInChunks = 4;
     const chunkCount = mapSizeInChunks * mapSizeInChunks * mapSizeInChunks;
+    const paletteId = Math.floor(rng() * blockPalettes.length);
     world = new World(16, mapSizeInChunks);
-    world.generate(rng, scene, chunkTexture);
+    world.generate(rng, scene, chunkTexture, paletteId);
 
     const playerSpawnI = Math.floor(rng() * chunkCount);
     const playerSpawnChunk = indexTo3D(playerSpawnI, mapSizeInChunks);
@@ -239,7 +245,7 @@ const initMap = () => {
     }
 
     if (!input.hasListeners) {
-        input.addListeners(onMouseMove);
+        input.addListeners(onMouseMove, true);
     }
 
     updateMoneyLabel();

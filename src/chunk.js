@@ -1,5 +1,5 @@
 import * as THREE from "../deps/three.js";
-import { blocks, blocksById } from "./blocks.js";
+import { blockPalettes, blocks, blocksById } from "./blocks.js";
 import { directionVecs } from "./direction.js";
 import { cubeMesh } from "./cubeMesh.js";
 import { crossMesh } from "./crossMesh.js";
@@ -170,7 +170,9 @@ export class Chunk {
         this.mesh.geometry.verticesNeedUpdate = true;
     }
 
-    generate = (rng, mapSize) => {
+    generate = (rng, mapSize, paletteId) => {
+        const palette = blockPalettes[paletteId];
+
         this.data.length = this.size * this.size * this.size;
         this.data.fill(blocks.air.id);
 
@@ -195,14 +197,14 @@ export class Chunk {
 
             if (noiseValue < caveNoiseSolidThreshold) {
                 let randNum = rng();
-                let block = blocks.dirt.id;
+                let block = palette.ground;
 
                 if (randNum < 0.002) {
-                    block = blocks.emerald.id;
+                    block = palette.ore2;
                 } else if (randNum < 0.03) {
-                    block = blocks.iron.id;
+                    block = palette.ore1;
                 } else if (randNum < 0.07) {
-                    block = blocks.coal.id;
+                    block = palette.ore0;
                 }
 
                 this.setBlock(x, y, z, block);
@@ -210,9 +212,9 @@ export class Chunk {
                 let block = blocks.air.id;
 
                 if (this.shouldGenerateSolid(worldX, worldY - 1, worldZ)) {
-                    block = blocks.greenMushroom.id;
+                    block = palette.groundDecor;
                 } else if (this.shouldGenerateSolid(worldX, worldY + 1, worldZ)) {
-                    block = blocks.redMushroom.id;
+                    block = palette.ceilingDecor;
                 }
 
                 if (block != blocks.air.id) {

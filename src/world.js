@@ -117,12 +117,12 @@ export class World {
         }
     }
 
-    generate = (rng, scene, texture) => {
+    generate = (rng, scene, texture, paletteId) => {
         for (let x = 0; x < this.mapSizeInChunks; x++)
         for (let y = 0; y < this.mapSizeInChunks; y++)
         for (let z = 0; z < this.mapSizeInChunks; z++) {
             let newChunk = new Chunk(this.chunkSize, x, y, z, scene, texture);
-            newChunk.generate(rng, this.mapSize);
+            newChunk.generate(rng, this.mapSize, paletteId);
             this.setChunk(x, y, z, newChunk);
         }
     }
