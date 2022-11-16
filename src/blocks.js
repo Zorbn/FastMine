@@ -11,7 +11,7 @@ export const blocks = {
         breakTime: 0.5,
         transparent: false,
     },
-    clay: {
+    stone: {
         id: 1,
         value: 1,
         breakTime: 0.5,
@@ -157,7 +157,7 @@ export const blockPalettes = [
         "ceilingDecor": blocks.venusFlytrap.id,
     },
     {
-        "ground": blocks.clay.id,
+        "ground": blocks.stone.id,
         "ore0": blocks.bronze.id,
         "ore1": blocks.silver.id,
         "ore2": blocks.gold.id,
