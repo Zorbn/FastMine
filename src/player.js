@@ -151,16 +151,10 @@ export class Player {
             newY = this.y;
         }
 
-        if (this.stepSound != null && grounded) {
-            this.stepSound.x = newX;
-            this.stepSound.y = newY - 0.5;
-            this.stepSound.z = newZ;
-
-            if (this.x != newX || this.y != newY || this.z != newZ) {
-                if (!this.stepSound.isPlaying) {
-                    randomizeDetune(this.stepSound);
-                    this.stepSound.play();
-                }
+        if (grounded && (this.x != newX || this.y != newY || this.z != newZ)) {
+            if (!this.stepSound.isPlaying) {
+                randomizeDetune(this.stepSound);
+                this.stepSound.play();
             }
         }
 
@@ -173,6 +167,9 @@ export class Player {
         camera.position.z = this.z;
         camera.quaternion.setFromEuler(this.angle);
 
+        this.stepSound.x = this.x;
+        this.stepSound.y = this.y - 0.5;
+        this.stepSound.z = this.z;
     }
 
     update = (deltaTime, world, camera, input, blockInteractionProvider) => {
