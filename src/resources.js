@@ -68,8 +68,6 @@ const loadTexArray = (image, depth, size) => {
         const zHorizontal = (z % texPerRow) * size;
         const zVertical = Math.floor(z / texPerRow) * size;
 
-        console.log(zVertical);
-
         for (let y = 0; y < size; y++)
             for (let x = 0; x < size; x++) {
                 const pixelI = ((x + zHorizontal) + (y + zVertical) * image.width) * texComponents;

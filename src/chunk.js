@@ -131,7 +131,7 @@ export class Chunk {
 
             for (let face = 0; face < faces; face++) {
                 // Only generate faces that will be visible when culling is enabled.
-                const dir= directionVecs[face];
+                const dir = directionVecs[face];
                 if (!cullFaces || !world.isBlockOccupied(worldX + dir[0], worldY + dir[1], worldZ + dir[2], false)) {
                     for (let ii = 0; ii < 6; ii++) {
                         indices[indexI] = mesh.indices[face][ii] + vertexI;
