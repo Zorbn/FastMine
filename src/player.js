@@ -185,7 +185,7 @@ export class Player {
     onMouseMove = (event, camera) => {
         this.angle.x -= event.movementY * mouseSensitivity;
         this.angle.y -= event.movementX * mouseSensitivity;
-        this.angle.x = Math.max(Math.min(this.angle.x, maxLookAngle), -maxLookAngle)
+        this.angle.x = Math.max(Math.min(this.angle.x, maxLookAngle), -maxLookAngle);
 
         this.forwardX = Math.sin(this.angle.y);
         this.forwardZ = Math.cos(this.angle.y);
