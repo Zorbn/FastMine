@@ -13,6 +13,7 @@ span {
     justify-content: center;
     align-items: center;
     flex-direction: column;
+    user-select: none;
 }
 
 .title {
@@ -48,6 +49,7 @@ span {
     display: none;
     color: white;
     flex-direction: column;
+    user-select: none;
 }
 
 #hud-center {
